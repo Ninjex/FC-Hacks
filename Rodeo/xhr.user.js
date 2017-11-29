@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        XHRTest
+// @name        XHR
 // @namespace   XHR
 // @include     https://rodeo-iad.amazon.com/BNA3/*
 // @version     1
@@ -13,23 +13,7 @@ function InjectDemoCode($) {
       let fetchURL = "http://fcresearch-na.aka.amazon.com/BNA3/results/container-hierarchy?s=" + cart_id;
       let messageTxt  = JSON.stringify (["fetchCarts", fetchURL])
         window.postMessage (messageTxt, "*");
-        //console.log ("Posting message");
     });
-
-    toteDB.totes.forEach(function(tote) {
-      let tote_id = tote.toteID;
-      let fetchURL = "http://fcresearch-na.aka.amazon.com/BNA3/results/container-hierarchy?s=" + tote_id;
-      let messageTxt  = JSON.stringify (["fetchTotes", fetchURL])
-        window.postMessage (messageTxt, "*");
-        //console.log ("Posting message");
-    });
-
-    let messageTxt = JSON.stringify (['updateShipments', document.location.href])
-    window.postMessage (messageTxt, "*");
-
-    setTimeout(function() {
-      InjectDemoCode($)
-    }, 30000);
 }
 
 withPages_jQuery (InjectDemoCode);
@@ -43,11 +27,9 @@ function receiveMessage (event) {
         messageJSON     = JSON.parse(event.data);
     }
     catch (zError) {
-        // Do nothing
     }
-    //console.log ("messageJSON:", messageJSON);
 
-    if ( ! messageJSON) return; //-- Message is not for us.
+    if ( ! messageJSON) return;
 
     if (messageJSON[0] == "fetchCarts") {
       document.getElementById('cartLocations').innerHTML = '';
@@ -76,45 +58,6 @@ function receiveMessage (event) {
               cartDiv.appendChild(divElement);
            }
         });
-    } else if (messageJSON[0] == "fetchTotes") {
-      document.getElementById('toteLocations').innerHTML = '';
-        var fetchURL    = messageJSON[1];
-        GM_xmlhttpRequest ({
-            method:     'GET',
-            url:        fetchURL,
-            onload:     function (responseDetails) {
-              let div = document.createElement('div');
-              div.innerHTML = responseDetails.responseText;
-              let area = div.getElementsByTagName('a')[0].innerText;
-              let identifier = area.substring(0,2);
-              var loc;
-              if(identifier == 'ws') {
-                loc = div.getElementsByTagName('a')[2].innerText;
-              } else {
-                loc = area;
-              }
-              let tote_identifier = fetchURL.split('?s=')[1];
-
-              let toteDiv = document.getElementById('toteLocations');
-              let divElement = document.createElement('div');
-              divElement.setAttribute('id', tote_identifier);
-              divElement.setAttribute('class', loc);
-              toteDiv.appendChild(divElement);
-           }
-        });
-    }
-    else { // updateShipments
-      var fetchURL = messageJSON[1];
-      console.log('Updating Shipments');
-      GM_xmlhttpRequest ({
-          method:     'GET',
-          url:        fetchURL,
-          onload:     function (responseDetails) {
-            let shipmentElement = document.getElementById('updatedShipments');
-            let pageDOM = responseDetails.responseText;
-            shipmentElement.innerHTML = pageDOM;
-         }
-      });
     }
 }
 

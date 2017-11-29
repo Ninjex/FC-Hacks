@@ -5,9 +5,44 @@
 // @version     1
 // ==/UserScript==
 
-let linkEl = document.getElementsByClassName('pager-page-link')[0];
+// https://rodeo-iad.amazon.com/resources/javascript/shipmentList.js
+let lineArray = JSON.parse(localStorage.getItem('lineSettings')) || [
+  {val:'SLAM01', text:'1', checked:true},
+  {val:'SLAM02', text:'2', checked:true},
+  {val:'SLAM03', text:'3', checked:true},
+  {val:'SLAM04', text:'4', checked:true},
+  {val:'SLAM05', text:'5', checked:true},
+  {val:'SLAM06', text:'6', checked:true},
+  {val:'SLAM07', text:'7', checked:true},
+  {val:'SLAM08', text:'8', checked:true},
+  {val:'SLAM09', text:'9', checked:true},
+  {val:'SLAM10', text:'10', checked:true},
+  {val:'wsSingles', text:'Stations', checked:true},
+  {val:'M00002', text:'M-Mod', checked:true},
+  {val:'Passthru', text:'Pass Throughs', checked:true},
+  {val:'INDUCT', text:'Induct', checked:true},
+  {val:'RECIRC', text:'Recirc', checked:true},
+  {val:'LANE',   text:'Lanes',  checked:true},
+];
+
+let lineHTML = '';
+lineArray.forEach(function(line) {
+  if(line.checked) {
+    lineHTML += '<li><input id="' + line.val+ '" checked type="checkbox" name="line" value="' + line.val + '">' + line.text + '</li>';
+  } else {
+    lineHTML += '<li><input id="' + line.val+ '" type="checkbox" name="line" value="' + line.val + '">' + line.text + '</li>'
+  }
+});
 
 let buttons = `<div id="bessTools">
+  <div id="lineFilter" class="dropdown-check-list" tabindex="100">
+    <span class="anchor">Line Options</span>
+    <ul class="items">
+      <li><button id="settings" onclick="javascript:saveSettings();">Save</button></li>
+      ${lineHTML}
+    </ul>
+  </div>
+
   <div id="btnArea">
     <button id="cart" onclick="javascript:cartModal();">Carts</button>
     <button id="tote" onclick="javascript:toteModal();">Totes</button>
@@ -16,7 +51,11 @@ let buttons = `<div id="bessTools">
   <div id="searchArea">
     <input type="text" maxlength="4" size="4" id="cart" class="" placeholder="Cart ID"/>
     <input type="text" maxlength="3" size="4" id="tote" class="" placeholder="Tote ID"/>
-  </div>`;
+    <div id="quickInfo"></div>
+  </div>
+</div>`;
+
+let linkEl = document.getElementsByClassName('pager-page-link')[0];
 
 if(linkEl) {
   let totalShipments = document.getElementsByClassName('pager-result-size')[0].childNodes[0].nodeValue;
@@ -29,24 +68,6 @@ if(linkEl) {
   buttons += `<a href="${newLink}">FIT ALL</a>`;
 }
 
-let lineArray = JSON.parse(localStorage.getItem('lineSettings')) || [
-  {val:'SLAM01', text:'1', checked:true},
-  {val:'SLAM02', text:'2', checked:true},
-  {val:'SLAM03', text:'3', checked:true},
-  {val:'SLAM04', text:'4', checked:true},
-  {val:'SLAM05', text:'5', checked:true},
-  {val:'SLAM06', text:'6', checked:true},
-  {val:'SLAM07', text:'7', checked:true},
-  {val:'SLAM08', text:'8', checked:true},
-  {val:'SLAM09', text:'9', checked:true},
-  {val:'wsSingles', text:'Stations', checked:true},
-  {val:'M00002', text:'M-Mod', checked:true},
-  {val:'Passthru', text:'Pass Throughs', checked:true},
-  {val:'INDUCT', text:'Induct', checked:true},
-  {val:'RECIRC', text:'Recirc', checked:true},
-  {val:'LANE',   text:'Lanes',  checked:true},
-];
-
 window.saveSettings = function() {
   lineArray.forEach(function(line) {
     let check = document.getElementById(line.val).checked;
@@ -57,26 +78,6 @@ window.saveSettings = function() {
   console.log('Setting localStorage lineSettings to:');
   console.log(lineArray);
 }
-
-let lineHTML = '';
-
-
-  lineArray.forEach(function(line) {
-    if(line.checked) {
-      lineHTML += '<li><input id="' + line.val+ '" checked type="checkbox" name="line" value="' + line.val + '">' + line.text + '</li>';
-    } else {
-      lineHTML += '<li><input id="' + line.val+ '" type="checkbox" name="line" value="' + line.val + '">' + line.text + '</li>'
-    }
-  });
-
-  buttons += `<div id="lineFilter" class="dropdown-check-list" tabindex="100">
-  <span class="anchor">Line Options</span>
-  <ul class="items">
-    <li><button id="settings" onclick="javascript:saveSettings();">Save</button></li>
-    ${lineHTML}
-  </ul>
-  </div>
-</div>`;
 
 document.body.innerHTML = buttons + document.body.innerHTML;
 
@@ -174,6 +175,13 @@ class ShipmentDB {
 class CartDB {
   constructor(carts) {
     this.carts = carts || [];
+  }
+
+  // CartDB.carts.forEach(function(c) { CartDB.sortBy('location', c.location)})
+  sortBy(identifier, value) {
+    return this.carts.filter(function(cart) {
+      return cart[identifier] == value;
+    });
   }
 
   addCart(cartObject) {
@@ -365,11 +373,12 @@ class Line {
   updateLines() {
     let lineDOM = document.getElementById('lineFilter');
     var vals = Array.prototype.map.call(lineDOM.getElementsByTagName('input'), val => val.checked)
-    let [ slam1, slam2, slam3, slam4, slam5, slam6, slam7, slam8, slam9, wsSingles, moooo2, passthru, induct, lane, recirc ] = vals;
+    let [ slam1, slam2, slam3, slam4, slam5, slam6, slam7, slam8, slam9, slam10, wsSingles, moooo2, passthru, induct, lane, recirc ] = vals;
     let filteredLines = {
       'SLAM01':slam1, 'SLAM02':slam2, 'SLAM03':slam3,
       'SLAM04':slam4, 'SLAM05':slam5, 'SLAM06':slam6,
       'SLAM07':slam7, 'SLAM_08':slam8, 'SLAM_09':slam9,
+      'SLAM_10':slam10,
       'wsSingles':wsSingles, 'M00002':moooo2,
       'Passthru':passthru, 'INDUCT':induct, 'LANE':lane,
       'RECIRC':recirc
@@ -379,8 +388,12 @@ class Line {
 
   isActive(line) {
       this.updateLines();
+      let pattern = /^[0-9]{3}/;
       let active = false;
       for(var propName in this.lines) {
+        if(propName == 'wsSingles') {
+          if(pattern.test(line)) active = true;
+        }
         if(propName.includes(line) || line.includes(propName) && this.lines[propName]) active = true;
       }
       return active;
@@ -754,35 +767,21 @@ window.cartModal = function() {
         } else {
           area = 'Not Scanned Into';
         }
-        let cartArea = groups.filter(function(group) {
+        let allCarts = groups.filter(function(group) {
           return group.area == area;
         })
-        let areaFound = (cartArea.length > 0) ? true : false;
-        if(areaFound) {
-          cartArea[0].data.push(
-            {cartID:cart.cartID,
-                   location:cart.location,
-                   units:cart.units,
-                   chutes:cart.chutes,
-                   highestDwell:cart.highestDwell().hours,
-                   lowestDwell:cart.lowestDwell().hours
-                   })
+        let found = (allCarts.length > 0) ? true : false;
+        if(found) {
+          allCarts[0].data.push({self:cart});
         } else {
-          groups.push(
-            {area:area,
-             data:[{cartID:cart.cartID,
-                    location:cart.location,
-                    units:cart.units,
-                    chutes:cart.chutes,
-                    highestDwell:cart.highestDwell().hours,
-                    lowestDwell:cart.lowestDwell().hours
-                    }]
-             }
-          )
+          groups.push({
+            area:area,
+            data:[{self:cart}]
+          });
         }
       }
     })
-
+    groups.sort(function(a, b) { return b.data.length - a.data.length})
     let totalCarts = 0;
     groups.forEach(function(group) {
       totalCarts += group.data.length;
@@ -891,20 +890,33 @@ window.cartModal = function() {
       table.addHeader(lowDwellHeader);
       table.addAttribute(attributes);
 
-      group.data.forEach(function(cart) {
+      group.data.forEach(function(cartArray) {
+        let cart = cartArray.self;
         let osid = cart.cartID;
         let location = cart.location;
         let units = cart.units;
         let chutes = cart.chutes;
-        let highDwell = cart.highestDwell;
-        let lowDwell  = cart.lowestDwell;
+        let highDwell = cart.highestDwell().hours;
+        let lowDwell  = cart.lowestDwell().hours;
 
-        let osidCell =  {text:osid, attributes:[{class:'tote', link:true}]};
+        let osidCell =  {text:osid, attributes:[{class:'cart', link:true}]};
         let locationCell = {text:location, attributes:[{class:'location', link:true}]};
         let unitCell =  {text:units, attributes:[{class:'units'}]};
         let chuteCell = {text:chutes, attributes:[{class:'chutes'}]};
         let highDwellCell = {text:highDwell, attributes:[{class:'dwell'}]};
         let lowDwellCell  = {text:lowDwell, attributes:[{class:'dwell'}]};
+
+        if(location.substring(0,2) == 'ws') {
+          let sameLocations = cartDB.sortBy('location', location);
+          if(sameLocations.length > 1) {
+            let titleString = sameLocations.map(function(l) {
+              return l.cartID;
+            }).join(' ');
+            osidCell.attributes.push({duplicate:'yes'}, {title:titleString});
+            locationCell.attributes.push({duplicate:'yes'}, {title:titleString});
+          }
+        }
+
 
         let finalCell = [osidCell, locationCell, unitCell, chuteCell, highDwellCell, lowDwellCell];
         table.addCell(finalCell);
@@ -952,30 +964,29 @@ window.toteModal = function() {
   toteDB.setLocations();
   let groups = [];
   let totes = toteDB.largestTotes();
-
   totes.forEach(function(tote) {
-    let line = tote.outerScannableID;
+    var line = tote.outerScannableID;
     if(lineManager.isActive(line)) {
+      let pattern = /^[0-9]{3}/;
+      if(line.includes('wsSingles') || pattern.test(line)) line = 'Pack Station';
       let toteLine = groups.filter(function(group) {
-        return group.lineName == line;
+        return group.lineName ==  line;
       })
       let lineFound = (toteLine.length > 0) ?  true : false;
-      if(lineFound) {
-        //console.log('Found line: ' + line + ' in group!');
-        toteLine[0].data.push({toteID:tote.toteID, units:tote.units, dwellTime:tote.shipments[0].dwellTime});
-        //console.log('Should inject into: ' + toteLine[0].lineName);
-      } else {
 
-        groups.push(
-          {lineName:tote.outerScannableID,
-           data:[{toteID:tote.toteID,
-           units:tote.units,
-           dwellTime:tote.highestDwell()}]}
-        );
+      if(lineFound) {
+        // add things to the group here
+        toteLine[0].data.push({self:tote});
+      } else {
+        groups.push({
+          lineName:line,
+           data:[{self:tote}]
+         });
       }
     }
   })
 
+  groups.sort(function(a, b) { return b.data.length - a.data.length});
   let modal = document.createElement('div');
   modal.setAttribute('id', 'myModal');
   modal.setAttribute('class', 'modal');
@@ -988,13 +999,12 @@ window.toteModal = function() {
   closeButton.innerHTML = '&times;';
   closeButton.setAttribute('id', 'modal-close');
   modalContent.appendChild(closeButton);
-
+  // let rows = [];
   let row = document.createElement('div');
   row.setAttribute('class', 'row');
   modalContent.appendChild(row);
 
   groups.forEach(function(group, index) {
-
     let column = document.createElement('div');
     column.setAttribute('class', 'grid col-sm-4');
     row.appendChild(column);
@@ -1014,17 +1024,32 @@ window.toteModal = function() {
     table.addHeader(unitHeader);
     table.addHeader(dwellHeader);
     table.addAttribute(attributes);
-
-      group.data.forEach(function(tote) {
+      let locSet = false;
+      group.data.forEach(function(toteArray) {
+        let tote = toteArray.self;
         let osid = tote.toteID;
         let units = tote.units;
-        let dwell = tote.dwellTime.hours;
+        let dwell = tote.highestDwell().hours;
+        let path  = tote.shipments[0].processPath;
+        let cond  = tote.shipments[0].condition;
+        let loc   = tote.outerScannableID;
 
-        let toteCell = {text:osid, attributes:[{class:'tote', link:true}]};
+        let toteCell = {text:osid, attributes:[{class:'tote', link:true, title:`${path} (${cond})`}]};
+        let locCell  = {text:loc, attributes:[{class:'location'}]};
         let unitCell = {text:units, attributes:[{class:'units'}]};
         let dwellCell = {text:dwell, attributes:[{class:'dwell'}]};
-
-        let finalCell = [toteCell, unitCell, dwellCell];
+        let pattern = /^[0-9]{3}/;
+        var finalCell;
+        if(loc.includes('wsSingles') || pattern.test(loc)) {
+          if(locSet == false) {
+            let locationHeader = {headerName:'Location', attributes:[]};
+            table.addHeader(locationHeader);
+          }
+          finalCell = [toteCell, unitCell, dwellCell, locCell];
+          locSet = true;
+        } else {
+          finalCell = [toteCell, unitCell, dwellCell];
+        }
         table.addCell(finalCell);
     })
     let tableHTML = table.createElement();
@@ -1077,20 +1102,29 @@ window.searchFor = function(identifier) {
   if(identifier == 'tote') {
     if(input.length == 3) {
       let shipments = toteDB.findIdentifier(input);
-      shipments.length > 0 ?
-        document.querySelector(selector).setAttribute('class', 'good') :
+      if(shipments.length > 0) {
+        let dwell = shipments[0].shipments[0].dwellTime.hours;
+        document.getElementById('quickInfo').innerHTML = `Units: ${shipments[0].units}, Dwell Time: ${dwell}`;
+        document.querySelector(selector).setAttribute('class', 'good');
+      } else {
         document.querySelector(selector).setAttribute('class', 'bad');
+      }
     } else {
+      document.getElementById('quickInfo').innerHTML = '';
       el.classList.remove('good');
       el.classList.remove('bad');
     }
   } else if (identifier == 'cart'){ // if(identifier == 'cart')
     if(input.length == 4) {
       let cart = cartDB.fetchCart(input);
-      cart.length > 0 ?
-        document.querySelector(selector).setAttribute('class', 'good') :
+      if(cart.length > 0) {
+        document.getElementById('quickInfo').innerHTML = `Units: ${cart[0].units}, Chutes: ${cart[0].chutes}`;
+        document.querySelector(selector).setAttribute('class', 'good');
+      } else {
         document.querySelector(selector).setAttribute('class', 'bad');
+      }
     } else {
+      document.getElementById('quickInfo').innerHTML = '';
       el.classList.remove('good');
       el.classList.remove('bad');
     }
