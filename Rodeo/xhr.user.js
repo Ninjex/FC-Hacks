@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name        XHR
 // @namespace   XHR
-// @include     https://rodeo-iad.amazon.com/BNA3/*
-// @version     1
+// @include     https://rodeo-iad.amazon.com/BNA3/ItemList*
+// @version     2
 // @grant       GM_xmlhttpRequest
 // ==/UserScript==
-
+console.log('Testing GM auto update!');
 function InjectDemoCode($) {
   console.log('Getting Updated Locations');
     cartDB.carts.forEach(function(cart) {
