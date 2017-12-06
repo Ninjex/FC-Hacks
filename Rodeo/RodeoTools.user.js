@@ -1,4 +1,4 @@
-// ==UserScript==
+﻿// ==UserScript==
 // @name        RodeoTools
 // @namespace   RodeoTools
 // @include     https://rodeo-iad.amazon.com/BNA3/ItemList*
@@ -103,6 +103,35 @@ checkList.getElementsByClassName('anchor')[0].onclick = function (evt) {
     checkList.classList.remove('visible');
   else
     checkList.classList.add('visible');
+}
+
+
+const PathList = {
+  ppMultiLargeDual: 'wsMultis[6-9].*',
+  ppMultiSmallDual: 'wsMultis[1-5].*',
+  // only shows AAs signed into the processing app.
+  ppMultiWraps:     'wsGiftWrap[1-9]{4}',
+  ppSingleLarge:    'wsSingles[1-4].*',
+  ppSinglePoly:     'wsSingles[5-8].*',
+  // no unique identifier for shoes, count is added with single small
+  ppSingleShoe:     'wsNULL',
+  ppSingleSmall:    '^[0-9]{3}',
+};
+
+const PathAcronyms = {
+  PPMultiLargeDual: 'ML',
+  PPMultiSmallDual: 'MS',
+  PPMultiWraps:     'GW',
+  PPSingleLarge:    'SL',
+  PPSinglePoly:     'SP',
+  PPSingleSmall:    'SS',
+  PPHOV:            'HOV'
+}
+
+const SinglePaths = {
+  singleLarge: 'PPSingleLarge',
+  singleSmall: 'PPSingleSmall',
+  hov: 'PPHOV'
 }
 
 class ShipmentDB {
@@ -388,7 +417,7 @@ class Line {
 
   isActive(line) {
       this.updateLines();
-      let pattern = /^[0-9]{3}/;
+      let pattern = /(^ws[0-9]{3}|^[0-9]{3})/;
       let active = false;
       for(var propName in this.lines) {
         if(propName == 'wsSingles') {
@@ -879,11 +908,13 @@ window.cartModal = function() {
       let locationHeader = {headerName:'Location', attributes:[]};
       let unitHeader  = {headerName:'Units', attributes:[]};
       let chuteHeader = {headerName:'Chutes', attributes:[]};
+      let pathHeader  = {headerName: 'Path', attributes:[]};
       let highDwellHeader =  {headerName:'Highest Dwell', attributes:[]};
       let lowDwellHeader  =  {headerName:'Lowest Dwell', attributes:[]};
       let attributes = {class:'grid-content'};
       table.addHeader(OSIDheader);
       table.addHeader(locationHeader);
+      table.addHeader(pathHeader);
       table.addHeader(unitHeader);
       table.addHeader(chuteHeader);
       table.addHeader(highDwellHeader);
@@ -898,12 +929,14 @@ window.cartModal = function() {
         let chutes = cart.chutes;
         let highDwell = cart.highestDwell().hours;
         let lowDwell  = cart.lowestDwell().hours;
+        let path      = PathAcronyms[cart.shipments[0].processPath];
 
         let osidCell =  {text:osid, attributes:[{class:'cart', link:true}]};
         let locationCell = {text:location, attributes:[{class:'location', link:true}]};
         let unitCell =  {text:units, attributes:[{class:'units'}]};
         let chuteCell = {text:chutes, attributes:[{class:'chutes'}]};
         let highDwellCell = {text:highDwell, attributes:[{class:'dwell'}]};
+        let pathCell      = {text:path, attributes:[{class:'path'}]};
         let lowDwellCell  = {text:lowDwell, attributes:[{class:'dwell'}]};
 
         if(location.substring(0,2) == 'ws') {
@@ -918,7 +951,7 @@ window.cartModal = function() {
         }
 
 
-        let finalCell = [osidCell, locationCell, unitCell, chuteCell, highDwellCell, lowDwellCell];
+        let finalCell = [osidCell, locationCell, pathCell, unitCell, chuteCell, highDwellCell, lowDwellCell];
         table.addCell(finalCell);
       })
       let tableHTML = table.createElement();
@@ -967,7 +1000,7 @@ window.toteModal = function() {
   totes.forEach(function(tote) {
     var line = tote.outerScannableID;
     if(lineManager.isActive(line)) {
-      let pattern = /^[0-9]{3}/;
+      let pattern = /(^ws[0-9]{3}|^[0-9]{3})/;
       if(line.includes('wsSingles') || pattern.test(line)) line = 'Pack Station';
       let toteLine = groups.filter(function(group) {
         return group.lineName ==  line;
@@ -1019,10 +1052,12 @@ window.toteModal = function() {
     let OSIDheader  = {headerName:'OSID', attributes:[]};
     let unitHeader  = {headerName:'UNITS', attributes:[]};
     let dwellHeader =  {headerName:'Dwell Time', attributes:[]};
+    let pathHeader  =  {headerName: 'Path / Cond', attributes:[]};
     let attributes = {class:'grid-content'};
     table.addHeader(OSIDheader);
     table.addHeader(unitHeader);
     table.addHeader(dwellHeader);
+    table.addHeader(pathHeader);
     table.addAttribute(attributes);
       let locSet = false;
       group.data.forEach(function(toteArray) {
@@ -1030,7 +1065,7 @@ window.toteModal = function() {
         let osid = tote.toteID;
         let units = tote.units;
         let dwell = tote.highestDwell().hours;
-        let path  = tote.shipments[0].processPath;
+        let path  = PathAcronyms[tote.shipments[0].processPath];
         let cond  = tote.shipments[0].condition;
         let loc   = tote.outerScannableID;
 
@@ -1038,17 +1073,18 @@ window.toteModal = function() {
         let locCell  = {text:loc, attributes:[{class:'location'}]};
         let unitCell = {text:units, attributes:[{class:'units'}]};
         let dwellCell = {text:dwell, attributes:[{class:'dwell'}]};
-        let pattern = /^[0-9]{3}/;
+        let pathCell  = {text:`${path} / ${cond}`, attributes:[{class:'path'}]};
+        let pattern = /(^ws[0-9]{3}|^[0-9]{3})/;
         var finalCell;
         if(loc.includes('wsSingles') || pattern.test(loc)) {
           if(locSet == false) {
             let locationHeader = {headerName:'Location', attributes:[]};
             table.addHeader(locationHeader);
           }
-          finalCell = [toteCell, unitCell, dwellCell, locCell];
+          finalCell = [toteCell, unitCell, dwellCell, locCell, pathCell];
           locSet = true;
         } else {
-          finalCell = [toteCell, unitCell, dwellCell];
+          finalCell = [toteCell, unitCell, dwellCell, pathCell];
         }
         table.addCell(finalCell);
     })
@@ -1144,8 +1180,3 @@ toteSearch.onkeyup = function() {
 
 cartDB.grabCarts();
 toteDB.grabTotes();
-
-
-setTimeout(function() {
-  if(document.getElementById('auto-refresh').checked) location.reload();
-}, 60000);
