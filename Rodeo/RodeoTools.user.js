@@ -125,7 +125,8 @@ const PathAcronyms = {
   PPSingleLarge:    'SL',
   PPSinglePoly:     'SP',
   PPSingleSmall:    'SS',
-  PPHOV:            'HOV'
+  PPHOV:            'HOV',
+  PPSingleShoe:     'SHOE'
 }
 
 const SinglePaths = {
@@ -1051,7 +1052,7 @@ window.toteModal = function() {
     let table = new Table();
     let OSIDheader  = {headerName:'OSID', attributes:[]};
     let unitHeader  = {headerName:'UNITS', attributes:[]};
-    let dwellHeader =  {headerName:'Dwell Time', attributes:[]};
+    let dwellHeader =  {headerName:'Dwell', attributes:[]};
     let pathHeader  =  {headerName: 'Path / Cond', attributes:[]};
     let attributes = {class:'grid-content'};
     table.addHeader(OSIDheader);
@@ -1140,7 +1141,7 @@ window.searchFor = function(identifier) {
       let shipments = toteDB.findIdentifier(input);
       if(shipments.length > 0) {
         let dwell = shipments[0].shipments[0].dwellTime.hours;
-        document.getElementById('quickInfo').innerHTML = `Units: ${shipments[0].units}, Dwell Time: ${dwell}`;
+        document.getElementById('quickInfo').innerHTML = `Units: ${shipments[0].units}, Dwell: ${dwell}`;
         document.querySelector(selector).setAttribute('class', 'good');
       } else {
         document.querySelector(selector).setAttribute('class', 'bad');
