@@ -1,4 +1,4 @@
-// ==UserScript==
+﻿// ==UserScript==
 // @name        AutomaticHeadCounts
 // @namespace   HeadCounts
 // @include     https://fc-pack-man-web-na.amazon.com/*
@@ -7,9 +7,19 @@
 // ==/UserScript==
 
 /*
+ Modify the list below to hold stations which you don't desire a headcount for,
+ i.e, problem solve packers
+*/
+const Excludes = [
+  'wsMultis502',
+  'wsMultis601'
+];
+
+/*
  Modify the object below to hold your desired process paths,
  provide the regex to match the process path name as a key: value pair
 */
+
 const PathList = {
   ppMultiLargeDual: 'wsMultis[6-9].*',
   ppMultiSmallDual: 'wsMultis[1-5].*',
@@ -81,10 +91,16 @@ class WorkStationDB {
   regexSearch(prop, expression, arr=this.workstations) {
     let matches = [];
     let regex = new RegExp(expression);
+    let blacklist = (sid) => { return (Excludes.filter(station => station == sid)).length >= 1 ? true : false }
     arr.filter((station) => {
-      if(regex.test(station[prop])) {
-        matches.push(station);
+      if(blacklist(station[prop])) {
+        console.log('Blacklisted Station: ' + station[prop]);
+      } else {
+        if(regex.test(station[prop])) {
+          matches.push(station);
+        }
       }
+
     });
     return matches;
   }
