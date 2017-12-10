@@ -2,7 +2,7 @@
 // @name        RodeoTools
 // @namespace   RodeoTools
 // @include     https://rodeo-iad.amazon.com/BNA3/ItemList*
-// @version     1.1
+// @version     1
 // ==/UserScript==
 
 // https://rodeo-iad.amazon.com/resources/javascript/shipmentList.js
@@ -477,10 +477,16 @@ window.lineManager     = new Line();
 window.filterManager   = new Filter();
 
 var isTote = function (tote) {
-  return tote.substring(0,3) == 'tsX';
+  return (tote.substring(0,3) == 'tsX' || tote.substring(0,3) == 'tsx');
 }
 
 var isCart = function (cart) {
+  let cartPaths = [
+    'PPMultiLarge', 'PPMultiLargeDual', 'PPMultiLargeQuad',
+    'PPMultiSmall', 'PPMultiSmallDual', 'PPMultiSmallQuad',
+    'PPMultiWraps'
+  ];
+
   return (cart.substring(0,5) == 'resml' || cart.substring(0,5) == 'relrg');
 }
 
