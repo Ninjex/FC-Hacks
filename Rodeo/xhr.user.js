@@ -5,7 +5,7 @@
 // @version     2
 // @grant       GM_xmlhttpRequest
 // ==/UserScript==
-console.log('Testing GM auto update!');
+
 function InjectDemoCode($) {
   console.log('Getting Updated Locations');
     cartDB.carts.forEach(function(cart) {
