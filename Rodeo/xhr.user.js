@@ -1,19 +1,43 @@
 // ==UserScript==
-// @name        XHR
+// @name        XHRTest
 // @namespace   XHR
-// @include     https://rodeo-iad.amazon.com/BNA3/ItemList*
-// @version     2
+// @include     https://rodeo-iad.amazon.com/BNA3/*
+// @version     1
 // @grant       GM_xmlhttpRequest
 // ==/UserScript==
 
+
 function InjectDemoCode($) {
-  console.log('Getting Updated Locations');
-    cartDB.carts.forEach(function(cart) {
-      let cart_id = cart.cartID;
-      let fetchURL = "http://fcresearch-na.aka.amazon.com/BNA3/results/container-hierarchy?s=" + cart_id;
-      let messageTxt  = JSON.stringify (["fetchCarts", fetchURL])
-        window.postMessage (messageTxt, "*");
-    });
+  /*
+  let text = document.createTextNode('Fetch')
+  let fetchBtn = document.createElement('div')
+  fetchBtn.setAttribute('class', 'btn')
+  fetchBtn.appendChild(text)
+*/
+  function getLocations () {
+      window.setInterval(function () {
+        if (window.pagnated && document.getElementById('cartLocations').children.length < cartDB.carts.length) {
+          document.querySelector('#btnArea #cart').innerText = `Carts (${document.getElementById('cartLocations').children.length} / ${cartDB.carts.length})`
+          console.log('Getting Locations')
+          console.log(cartDB.carts)
+          cartDB.carts.forEach(function(cart) {
+            let cart_id = cart.cartID;
+            let fetchURL = "http://fcresearch-na.aka.amazon.com/BNA3/results/container-hierarchy?s=" + cart_id;
+            let messageTxt  = JSON.stringify (["fetchCarts", fetchURL])
+            window.postMessage (messageTxt, "*");
+          })
+        } else {
+          document.querySelector('#btnArea #cart').innerText = `Carts (${document.getElementById('cartLocations').children.length} / ${cartDB.carts.length})`
+        }
+      }, 2000)
+    }
+    getLocations()
+/*
+  fetchBtn.onclick = function () {
+    getLocations()
+  }
+  document.getElementById('bessTools').appendChild(fetchBtn)
+  */
 }
 
 withPages_jQuery (InjectDemoCode);
@@ -32,7 +56,7 @@ function receiveMessage (event) {
     if ( ! messageJSON) return;
 
     if (messageJSON[0] == "fetchCarts") {
-      document.getElementById('cartLocations').innerHTML = '';
+      // document.getElementById('cartLocations').innerHTML = '';
         var fetchURL    = messageJSON[1];
         GM_xmlhttpRequest ({
             method:     'GET',
@@ -52,10 +76,12 @@ function receiveMessage (event) {
               let c_id = cart_identifier.substr(cart_identifier.length - 4);
 
               let cartDiv = document.getElementById('cartLocations');
-              let divElement = document.createElement('div');
-              divElement.setAttribute('id', c_id);
-              divElement.setAttribute('class', loc);
-              cartDiv.appendChild(divElement);
+              if (!document.getElementById(c_id)) {
+                let divElement = document.createElement('div');
+                divElement.setAttribute('id', c_id);
+                divElement.setAttribute('class', loc);
+                cartDiv.appendChild(divElement);
+              }
            }
         });
     }
@@ -68,4 +94,4 @@ function withPages_jQuery (NAMED_FunctionToRun) {
     script.textContent  = funcText + "\n\n";
     script.textContent += 'jQuery(document).ready( function () {' + funcName + '(jQuery);} );';
     document.body.appendChild (script);
-};
+}
