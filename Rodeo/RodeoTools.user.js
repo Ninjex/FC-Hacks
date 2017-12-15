@@ -1,4 +1,4 @@
-﻿// ==UserScript==
+// ==UserScript==
 // @name        RodeoTools
 // @namespace   RodeoTools
 // @include     https://rodeo-iad.amazon.com/BNA3/ItemList*
@@ -54,19 +54,6 @@ let buttons = `<div id="bessTools">
     <div id="quickInfo"></div>
   </div>
 </div>`
-
-let linkEl = document.getElementsByClassName('pager-page-link')[0]
-
-if (linkEl) {
-  let totalShipments = document.getElementsByClassName('pager-result-size')[0].childNodes[0].nodeValue
-  let link = linkEl.href
-  let explode = link.split('currentPage=2')
-  let headLink = explode[0] + 'currentPage=1'
-  let doubleExplode = explode[1].split('pageSize=1000')
-  let tailLink = doubleExplode[0] + 'pageSize=' + totalShipments + doubleExplode[1]
-  let newLink = headLink + tailLink
-  buttons += `<a href="${newLink}">FIT ALL</a>`
-}
 
 window.saveSettings = function () {
   lineArray.forEach(function (line) {
@@ -148,7 +135,7 @@ class ShipmentDB {
     console.log(this.shipments)
   }
 
-  grabShipments () {
+  grabShipments (node = document) {
     function convertTime (dwellTime) {
       let time = dwellTime.split('h')
       let minutes = 0
@@ -160,7 +147,7 @@ class ShipmentDB {
       return minutes
     }
 
-    var rows = document.getElementsByTagName('tr')
+    var rows = node.getElementsByTagName('tr')
     for (var i = 1; i < rows.length; i++) {
       var row = rows[i]
       var cols = Array.prototype.map.call(row.getElementsByTagName('td'), col => col.innerText)
@@ -407,6 +394,34 @@ class ToteDB {
       if (parent.fetchTote(toteIdent).length > 0) parent.fetchTote(toteIdent).pop().location = toteLoc
     })
   }
+
+  sortBy (property, direction = 'desc') {
+      modal.clearContents()
+      let previousOrder = this.totes.slice()
+      let order
+      if (property === 'units') {
+        order = (direction === 'desc'
+        ? this.totes.sort((a, b) => { return b.units - a.units })
+        : this.totes.sort((b, a) => { return b.units - a.units }))
+      } else if (property === 'dwell') {
+        order = (direction === 'desc'
+        ? this.totes.sort((a, b) => { return b.highestDwell.minutes - a.highestDwell.minutes })
+        : this.totes.sort((b, a) => { return b.highestDwell.minutes - a.highestDwell.minutes }))
+      } else if (property === 'osid') {
+        order = (direction === 'desc'
+        ? this.totes.sort((a, b) => { return b.toteID < a.toteID })
+        : this.totes.sort((b, a) => { return b.toteID < a.toteID }))
+      }
+      if (Array.compare(previousOrder, order)) {
+        let newDirection = (direction === 'desc' ? 'asc' : 'desc')
+        this.sortBy(property, newDirection)
+      } else {
+        // console.log('New tote order: ' + order)
+        this.totes = order
+        this.createTables()
+        // return order
+}
+}
 }
 
 class Line {
@@ -733,7 +748,7 @@ class Table {
   constructor (headers, cellData, attributes) {
     this.headers = headers || []
     this.cellData = cellData || []
-    this.attributes = attributes || []
+    this.attributes = attributes || [{'data-sortable': ''}]
   }
 
   addAttribute (attributeObject) {
@@ -767,6 +782,13 @@ class Table {
       if (attributes.length > 0) {
         attributes.forEach(function (attribute) {
           for (var attributeName in attribute) {
+            if (attributeName === 'callback') {
+              headerElement.onclick = () => {
+                let code = attribute[attributeName].func
+                let params = attribute[attributeName].params
+                code.apply(null, params)
+              }
+            }
             headerElement.setAttribute(attributeName, attribute[attributeName])
           }
         })
@@ -963,7 +985,7 @@ window.cartModal = function () {
         }
       }
 
-      let finalCell = [osidCell, locationCell, pathCell, unitCell, chuteCell, highDwellCell, lowDwellCell]
+      let finalCell = [osidCell, locationCell, unitCell, chuteCell, pathCell, highDwellCell, lowDwellCell]
       table.addCell(finalCell)
     })
     let tableHTML = table.createElement()
@@ -1061,7 +1083,17 @@ window.toteModal = function () {
 
     let table = new Table()
 
-    let toteHeaders = ['OSID', 'Units', 'Dwell', 'Path / Cond']
+    table.addHeader({
+      headerName: 'OSID',
+      attributes: [{
+        class: 'osid',
+        callback: {
+          func: () => { toteDB.sortBy('osid') },
+          params: []
+        }
+      }]
+    })
+    let toteHeaders = ['Units', 'Dwell', 'Path / Cond']
     toteHeaders.map(header => table.addHeader({headerName: header, attributes: []}))
 
     let attributes = {class: 'grid-content'}
@@ -1135,6 +1167,66 @@ window.toteModal = function () {
   }
 }
 
+
+class Modal {
+  constructor (_id, _class) {
+    this.id = _id
+    this.class = _class
+    this.modal = document.createElement('div')
+    this.closeButton = document.createElement('span')
+    this.header = document.createElement('div')
+    this.content = document.createElement('div')
+  }
+
+  build () {
+    this.clearContents()
+
+    this.modal.setAttribute('id', this.id)
+    this.modal.setAttribute('class', this.class)
+
+    this.header.setAttribute('class', 'modal-header')
+    this.modal.appendChild(this.header)
+
+    this.closeButton.innerHTML = '&times'
+    this.closeButton.setAttribute('id', 'modal-close')
+    this.header.appendChild(this.closeButton)
+
+    this.content.setAttribute('class', 'modal-content')
+    this.modal.appendChild(this.content)
+
+    this.display()
+    this.closeHook()
+  }
+
+  closeHook () {
+    let parent = this
+    this.closeButton.onclick = function () {
+      // modal.remove()
+      parent.hide()
+    }
+  }
+
+  remove () {
+    this.modal.parentNode.removeChild(this.modal)
+  }
+
+  display () {
+    document.body.appendChild(this.modal)
+    this.modal.style.display = 'block'
+  }
+
+  hide () {
+    this.modal.style.display = 'none'
+  }
+
+  clearContents () {
+    this.content.textContent = ''
+  }
+}
+
+window.modal = new Modal('informationModal', 'modal')
+
+
 window.searchFor = function (identifier) {
   let selector = `#searchArea #${identifier}`
   let input = document.querySelector(selector).value
@@ -1182,5 +1274,35 @@ toteSearch.onkeyup = function () {
   searchFor('tote')
 }
 
-cartDB.grabCarts()
-toteDB.grabTotes()
+let counter = 2
+window.pagnated = false
+
+function getPagnationPage (page) {
+  $.get(page, function(data) {
+    let div = document.createElement('div')
+    div.innerHTML = data
+    nextPage = div.querySelector('.shipment-list .warn-pagination .pager-next-link').href;
+    shipmentManager.grabShipments(div)
+    console.log('Grabbing Page: ' + counter)
+    document.querySelector('#btnArea #cart').innerText = `Loading Page: ${counter}`
+    counter += 1
+    shipmentManager.showShipments()
+    if (nextPage) {
+      getPagnationPage(nextPage)
+    } else {
+      console.log('Pagnation done')
+      cartDB.grabCarts()
+      cartDB.setLocations()
+      window.pagnated = true
+    }
+  })
+}
+let nextPage = document.querySelector('.shipment-list .warn-pagination .pager-next-link').href;
+if (nextPage) {
+  getPagnationPage(nextPage)
+} else {
+  window.pagnated = true
+  cartDB.grabCarts()
+  cartDB.setLocations()
+  toteDB.grabTotes()
+}
