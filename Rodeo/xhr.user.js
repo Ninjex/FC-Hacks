@@ -2,7 +2,7 @@
 // @name        XHRTest
 // @namespace   XHR
 // @include     https://rodeo-iad.amazon.com/BNA3/*
-// @version     1
+// @version     2
 // @grant       GM_xmlhttpRequest
 // ==/UserScript==
 
