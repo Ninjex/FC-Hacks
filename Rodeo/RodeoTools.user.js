@@ -2,7 +2,7 @@
 // @name        RodeoTools
 // @namespace   RodeoTools
 // @include     https://rodeo-iad.amazon.com/BNA3/ItemList*
-// @version     1
+// @version     2
 // ==/UserScript==
 
 // https://rodeo-iad.amazon.com/resources/javascript/shipmentList.js
@@ -45,7 +45,7 @@ let buttons = `<div id="bessTools">
 
   <div id="btnArea">
     <button id="cart" onclick="javascript:cartModal()">Carts</button>
-    <button id="tote" onclick="javascript:toteModal()">Totes</button>
+    <button id="tote" onclick="javascript:toteModalTest()">Totes</button>
   </div>
 
   <div id="searchArea">
@@ -135,7 +135,8 @@ class ShipmentDB {
     console.log(this.shipments)
   }
 
-  grabShipments (node = document) {
+  grabShipments (node) {
+    console.log('Grabbing from node: ' + node)
     function convertTime (dwellTime) {
       let time = dwellTime.split('h')
       let minutes = 0
@@ -173,6 +174,7 @@ class ShipmentDB {
         'dwellTime': {'hours': dwellTime, 'minutes': convertTime(dwellTime)}
       })
     }
+    this.showShipments()
   }
 
   partialSort (identifier, value) {
@@ -192,6 +194,17 @@ class ShipmentDB {
       return shipment[identifier] === value
     })
   }
+}
+
+Array.compare = function (a, b) {
+    if (a === b) return true
+    if (JSON.stringify(a) === JSON.stringify(b)) return true
+    if (a == null || b == null) return false
+    if (a.length !== b.length) return false
+    for (var i = 0; i < a.length; ++i) {
+      if (a[i] !== b[i]) return false
+    }
+    return true
 }
 
 class CartDB {
@@ -395,8 +408,123 @@ class ToteDB {
     })
   }
 
+  createTables () {
+    console.log('creating tote table')
+    this.setLocations()
+    let groups = []
+    let totes = this.totes
+    console.log(totes)
+    totes.forEach(function (tote) {
+      let line = tote.outerScannableID
+      if (lineManager.isActive(line)) {
+        let pattern = /(^ws[0-9]{3}|^[0-9]{3})/
+        if (line.includes('wsSingles') || pattern.test(line)) line = 'Pack Station'
+        let toteLine = groups.filter(function (group) {
+          return group.lineName === line
+        })
+        let lineFound = (toteLine.length > 0)
+        if (lineFound) {
+          // add things to the group here
+          toteLine[0].data.push({self: tote})
+        } else {
+          groups.push({
+            lineName: line,
+            data: [{self: tote}]
+          })
+        }
+      } // end: if lineManager.isActive(line)
+    }) // end: totes.foreach()
+
+    groups.sort(function (a, b) { return b.data.length - a.data.length })
+
+    groups.forEach(function (group, index) {
+
+      let column = document.createElement('div')
+      column.setAttribute('class', 'grid col-sm-4')
+
+      if (document.querySelector('#informationModal .row')) {
+        let contentArea = document.querySelector('#informationModal .row')
+        contentArea.appendChild(column)
+      }
+
+      let columnHeader = document.createElement('div')
+      columnHeader.setAttribute('class', 'grid-header')
+      let headerData = document.createTextNode(`${group.lineName} [${group.data.length}]`)
+      columnHeader.appendChild(headerData)
+      column.appendChild(columnHeader)
+
+      let table = new Table()
+      let toteHeaders = ['Path / Cond']
+
+      table.addHeader({
+        headerName: 'OSID',
+        attributes: [{
+          class: 'osid',
+          callback: {
+            func: () => { toteDB.sortBy('osid') },
+            params: []
+          }
+        }]
+      })
+
+      table.addHeader({
+        headerName: 'Units',
+        attributes: [{
+          class: 'units',
+          callback: {
+            func: () => { toteDB.sortBy('units') },
+            params: []
+          }
+        }]
+      })
+
+      table.addHeader({
+        headerName: 'Dwell',
+        attributes: [{
+          class: 'dwell',
+          callback: {
+            func: () => { toteDB.sortBy('dwell') },
+            params: []
+          }
+        }]
+      })
+
+      toteHeaders.map(header => table.addHeader({headerName: header, attributes: []}))
+
+      let attributes = {class: 'grid-content'}
+      table.addAttribute(attributes)
+      let locSet = false
+      group.data.forEach(function (toteArray) {
+        let tote = toteArray.self
+        let { toteID, units, processPath, condition, outerScannableID } = tote
+        let { hours } = tote.lowestDwell
+        let path = PathAcronyms[processPath]
+
+        let toteCell = {text: toteID, attributes: [{class: 'tote', link: true, title: `${path} (${condition})`}]}
+        let locCell = {text: outerScannableID, attributes: [{class: 'location'}]}
+        let unitCell = {text: units, attributes: [{class: 'units'}]}
+        let dwellCell = {text: hours, attributes: [{class: 'dwell'}]}
+        let pathCell = {text: `${path} / ${condition}`, attributes: [{class: 'path'}]}
+        let pattern = /(^ws[0-9]{3}|^[0-9]{3})/
+        var finalCell
+        if (outerScannableID.includes('wsSingles') || pattern.test(outerScannableID)) {
+          if (locSet === false) {
+            let locationHeader = {headerName: 'Location', attributes: []}
+            table.addHeader(locationHeader)
+          }
+          finalCell = [toteCell, unitCell, dwellCell, locCell, pathCell]
+          locSet = true
+        } else {
+          finalCell = [toteCell, unitCell, dwellCell, pathCell]
+        }
+        table.addCell(finalCell)
+      })
+      let tableHTML = table.createElement()
+      columnHeader.appendChild(tableHTML)
+    })
+  }
+
   sortBy (property, direction = 'desc') {
-      modal.clearContents()
       let previousOrder = this.totes.slice()
       let order
       if (property === 'units') {
@@ -413,15 +541,16 @@ class ToteDB {
         : this.totes.sort((b, a) => { return b.toteID < a.toteID }))
       }
       if (Array.compare(previousOrder, order)) {
+        console.log('blahhh')
         let newDirection = (direction === 'desc' ? 'asc' : 'desc')
         this.sortBy(property, newDirection)
       } else {
-        // console.log('New tote order: ' + order)
+        modal.clearContents()
         this.totes = order
-        this.createTables()
-        // return order
-}
-}
+         this.createTables()
+         return order
+      }
+    }
 }
 
 class Line {
@@ -515,7 +644,7 @@ class Shipment {
 }
 
 window.shipmentManager = new ShipmentDB()
-shipmentManager.grabShipments()
+shipmentManager.grabShipments(document)
 
 window.lineManager = new Line()
 
@@ -669,6 +798,10 @@ class Tote {
     this.shipments = shipments || []
     this.units = this.shipments.length
     this.outerScannableID = this.shipments[0].outerScannableID
+    this.processPath = this.shipments[0].processPath
+    this.condition = this.shipments[0].condition
+    this.lowestDwell = this.lowestDwellTime()
+    this.highestDwell = this.highestDwellTime()
   }
   addShipment (shipmentObject) {
     this.shipments.push(shipmentObject)
@@ -679,14 +812,23 @@ class Tote {
     return this.shipments.length
   }
 
-  highestDwell () {
-    let highestDwellTime = this.shipments[0].dwellTime
-    this.shipments.forEach(function (shipment) {
-      let dwell = shipment.dwellTime.minutes
-      if (parseInt(dwell) > parseInt(highestDwellTime.minutes)) highestDwellTime = shipment.dwellTime
-    })
-    return highestDwellTime
+  highestDwellTime () {
+      let highestDwellTime = this.shipments[0].dwellTime
+      this.shipments.forEach(function (shipment) {
+        let dwell = shipment.dwellTime.minutes
+        if (parseInt(dwell) > parseInt(highestDwellTime.minutes)) highestDwellTime = shipment.dwellTime
+      })
+      return highestDwellTime
   }
+
+  lowestDwellTime () {
+      let lowestDwellTime = this.shipments[0].dwellTime
+      this.shipments.forEach(function (shipment) {
+        let dwell = shipment.dwellTime.minutes
+        if (parseInt(dwell) < parseInt(lowestDwellTime.minutes)) lowestDwellTime = shipment.dwellTime
+      })
+      return lowestDwellTime
+    }
 }
 
 window.sameOSID = function (osid) {
@@ -1030,7 +1172,7 @@ window.cartModal = function () {
 window.toteModal = function () {
   toteDB.setLocations()
   let groups = []
-  let totes = toteDB.largestTotes()
+  let totes = toteDB.totes // toteDB.largestTotes()
   totes.forEach(function (tote) {
     var line = tote.outerScannableID
     if (lineManager.isActive(line)) {
@@ -1093,7 +1235,29 @@ window.toteModal = function () {
         }
       }]
     })
-    let toteHeaders = ['Units', 'Dwell', 'Path / Cond']
+
+    table.addHeader({
+      headerName: 'Units',
+      attributes: [{
+        class: 'units',
+        callback: {
+          func: () => { toteDB.sortBy('units') },
+          params: []
+        }
+      }]
+    })
+
+    table.addHeader({
+      headerName: 'Dwell',
+      attributes: [{
+        class: 'dwell',
+        callback: {
+          func: () => { toteDB.sortBy('dwell') },
+          params: []
+        }
+      }]
+    })
+    let toteHeaders = ['Path / Cond']
     toteHeaders.map(header => table.addHeader({headerName: header, attributes: []}))
 
     let attributes = {class: 'grid-content'}
@@ -1103,7 +1267,7 @@ window.toteModal = function () {
       let tote = toteArray.self
       let osid = tote.toteID
       let units = tote.units
-      let dwell = tote.highestDwell().hours
+      let dwell = tote.lowestDwellTime().hours
       let path = PathAcronyms[tote.shipments[0].processPath]
       let cond = tote.shipments[0].condition
       let loc = tote.outerScannableID
@@ -1120,7 +1284,7 @@ window.toteModal = function () {
           let locationHeader = {headerName: 'Location', attributes: []}
           table.addHeader(locationHeader)
         }
-        finalCell = [toteCell, unitCell, dwellCell, locCell, pathCell]
+        finalCell = [toteCell, unitCell, dwellCell, pathCell, locCell]
         locSet = true
       } else {
         finalCell = [toteCell, unitCell, dwellCell, pathCell]
@@ -1176,6 +1340,7 @@ class Modal {
     this.closeButton = document.createElement('span')
     this.header = document.createElement('div')
     this.content = document.createElement('div')
+    this.row = document.createElement('div')
   }
 
   build () {
@@ -1194,6 +1359,9 @@ class Modal {
     this.content.setAttribute('class', 'modal-content')
     this.modal.appendChild(this.content)
 
+    this.row.setAttribute('class', 'row')
+    this.content.appendChild(this.row)
+
     this.display()
     this.closeHook()
   }
@@ -1201,7 +1369,6 @@ class Modal {
   closeHook () {
     let parent = this
     this.closeButton.onclick = function () {
-      // modal.remove()
       parent.hide()
     }
   }
@@ -1220,12 +1387,17 @@ class Modal {
   }
 
   clearContents () {
-    this.content.textContent = ''
+    this.row.textContent = ''
   }
 }
 
 window.modal = new Modal('informationModal', 'modal')
 
+window.toteModalTest = function () {
+   if (toteDB.totes.length < 1) toteDB.grabTotes()
+    modal.build()
+    toteDB.createTables()
+}
 
 window.searchFor = function (identifier) {
   let selector = `#searchArea #${identifier}`
@@ -1278,9 +1450,11 @@ let counter = 2
 window.pagnated = false
 
 function getPagnationPage (page) {
+  console.log('grabbing fromsss: ' + page)
   $.get(page, function(data) {
     let div = document.createElement('div')
     div.innerHTML = data
+    console.log(div)
     nextPage = div.querySelector('.shipment-list .warn-pagination .pager-next-link').href;
     shipmentManager.grabShipments(div)
     console.log('Grabbing Page: ' + counter)
@@ -1288,6 +1462,7 @@ function getPagnationPage (page) {
     counter += 1
     shipmentManager.showShipments()
     if (nextPage) {
+      console.log(nextPage)
       getPagnationPage(nextPage)
     } else {
       console.log('Pagnation done')
@@ -1300,6 +1475,7 @@ function getPagnationPage (page) {
 let nextPage = document.querySelector('.shipment-list .warn-pagination .pager-next-link').href;
 if (nextPage) {
   getPagnationPage(nextPage)
+  //  getPagnationPage(document.location.href  + '&pager.CUSTOMER_SHIPMENTS.pageSize=10000000')
 } else {
   window.pagnated = true
   cartDB.grabCarts()
