@@ -55,6 +55,19 @@ let buttons = `<div id="bessTools">
   </div>
 </div>`
 
+let linkEl = document.getElementsByClassName('pager-page-link')[0];
+
+if(linkEl) {
+  let totalShipments = document.getElementsByClassName('pager-result-size')[0].childNodes[0].nodeValue;
+  let link = linkEl.href;
+  let explode = link.split('currentPage=2');
+  let headLink = explode[0] + 'currentPage=1';
+  let doubleExplode = explode[1].split('pageSize=1000');
+  let tailLink = doubleExplode[0] + 'pageSize=' + totalShipments + doubleExplode[1];
+  let newLink = headLink + tailLink;
+  buttons += `<a href="${newLink}">FIT ALL</a>`;
+}
+
 window.saveSettings = function () {
   lineArray.forEach(function (line) {
     let check = document.getElementById(line.val).checked
@@ -228,6 +241,16 @@ class CartDB {
   }
 
   grabCarts () {
+    function isCart (cart) {
+      let cartPaths = [
+        'PPMultiLarge', 'PPMultiLargeDual', 'PPMultiLargeQuad',
+        'PPMultiSmall', 'PPMultiSmallDual', 'PPMultiSmallQuad',
+        'PPMultiWraps'
+      ]
+
+      return (cart.substring(0, 5) === 'resml' || cart.substring(0, 5) === 'relrg')
+    }
+
     let parent = this
     let filterCarts = []
     let cartList = shipmentManager.shipments.filter(function (shipmentObject) {
@@ -533,8 +556,8 @@ class ToteDB {
         : this.totes.sort((b, a) => { return b.units - a.units }))
       } else if (property === 'dwell') {
         order = (direction === 'desc'
-        ? this.totes.sort((a, b) => { return b.highestDwell.minutes - a.highestDwell.minutes })
-        : this.totes.sort((b, a) => { return b.highestDwell.minutes - a.highestDwell.minutes }))
+        ? this.totes.sort((a, b) => { return parseInt(b.lowestDwell.minutes) - parseInt(a.lowestDwell.minutes) })
+        : this.totes.sort((b, a) => { return parseInt(b.lowestDwell.minutes) - parseInt(a.lowestDwell.minutes) }))
       } else if (property === 'osid') {
         order = (direction === 'desc'
         ? this.totes.sort((a, b) => { return b.toteID < a.toteID })
@@ -654,15 +677,7 @@ var isTote = function (tote) {
   return (tote.substring(0, 3).toLowerCase() === 'tsx')
 }
 
-var isCart = function (cart) {
-  let cartPaths = [
-    'PPMultiLarge', 'PPMultiLargeDual', 'PPMultiLargeQuad',
-    'PPMultiSmall', 'PPMultiSmallDual', 'PPMultiSmallQuad',
-    'PPMultiWraps'
-  ]
 
-  return (cart.substring(0, 5) === 'resml' || cart.substring(0, 5) === 'relrg')
-}
 
 var onLine = function (outerscanid, line) {
   return (outerscanid.substring(5) === line || outerscanid.substring(0, 9) === line || outerscanid.substring(5, 13) === line)
@@ -718,11 +733,6 @@ filterManager.addFilter({
   'description': 'Verifies if the scannable ID is a tote ID'
 })
 
-filterManager.addFilter({
-  'name': 'isCart',
-  'code': isCart,
-  'description': 'Verifies if the scannable ID is a cart ID'
-})
 
 filterManager.addFilter({
   'name': 'onLine',
