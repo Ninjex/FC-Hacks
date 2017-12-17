@@ -35,7 +35,7 @@ lineArray.forEach(function (line) {
 })
 
 let buttons = `<div id="bessTools">
-  <div id='pagnationLoading'><p></p></div>
+<div id='pagnationLoading'><p></p></div>
   <div id="lineFilter" class="dropdown-check-list" tabindex="100">
     <span class="anchor">Line Options</span>
     <ul class="items">
@@ -1468,7 +1468,8 @@ function getPagnationPage (page, manager) {
       getPagnationPage(nextPage, shipmentManager)
     } else {
       console.log('Pagnation done')
-      document.querySelector('#pagnationLoading p').innerText = `Complete!`
+      document.querySelector('#btnArea #cart').setAttribute('class', 'flagged')
+      document.querySelector('#pagnationLoading p').innerText = ``
       cartDB.grabCarts()
       cartDB.setLocations()
       toteDB.grabTotes()
