@@ -27,7 +27,8 @@ function InjectDemoCode($) {
             window.postMessage (messageTxt, "*");
           })
         } else {
-          document.querySelector('#btnArea #cart').innerText = `Carts Loaded`
+          document.querySelector('#btnArea #cart').setAttribute('class', 'good')
+          document.querySelector('#btnArea #cart').innerText = `Carts`
         }
       }, 2000)
     }
