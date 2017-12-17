@@ -27,7 +27,7 @@ function InjectDemoCode($) {
             window.postMessage (messageTxt, "*");
           })
         } else {
-          document.querySelector('#btnArea #cart').innerText = `Carts (${document.getElementById('cartLocations').children.length} / ${cartDB.carts.length})`
+          document.querySelector('#btnArea #cart').innerText = `Carts Loaded`
         }
       }, 2000)
     }
