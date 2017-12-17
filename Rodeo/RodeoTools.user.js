@@ -35,6 +35,7 @@ lineArray.forEach(function (line) {
 })
 
 let buttons = `<div id="bessTools">
+  <div id='pagnationLoading'><p></p></div>
   <div id="lineFilter" class="dropdown-check-list" tabindex="100">
     <span class="anchor">Line Options</span>
     <ul class="items">
@@ -55,18 +56,6 @@ let buttons = `<div id="bessTools">
   </div>
 </div>`
 
-let linkEl = document.getElementsByClassName('pager-page-link')[0];
-
-if(linkEl) {
-  let totalShipments = document.getElementsByClassName('pager-result-size')[0].childNodes[0].nodeValue;
-  let link = linkEl.href;
-  let explode = link.split('currentPage=2');
-  let headLink = explode[0] + 'currentPage=1';
-  let doubleExplode = explode[1].split('pageSize=1000');
-  let tailLink = doubleExplode[0] + 'pageSize=' + totalShipments + doubleExplode[1];
-  let newLink = headLink + tailLink;
-  buttons += `<a href="${newLink}">FIT ALL</a>`;
-}
 
 window.saveSettings = function () {
   lineArray.forEach(function (line) {
@@ -164,28 +153,33 @@ class ShipmentDB {
     var rows = node.getElementsByTagName('tr')
     for (var i = 1; i < rows.length; i++) {
       var row = rows[i]
-      var cols = Array.prototype.map.call(row.getElementsByTagName('td'), col => col.innerText)
+      var cols = Array.prototype.map.call(row.getElementsByTagName('td'), col => col.innerText.trim())
       let [
           foo, sid, fnSku, exsd, scanid, outerscanid,
           cond, shipmeth, shipopt, processpath, pickpriority,
           batchid, quantity, workingpool, dwellTime
           ] = cols
-      this.addShipment({
-        'shipmentID': sid,
-        'fnSku': fnSku,
-        'expectedShipDate': exsd,
-        'scannableID': scanid,
-        'outerScannableID': outerscanid,
-        'condition': cond,
-        'shipMethod': shipmeth,
-        'shipOption': shipopt,
-        'processPath': processpath,
-        'pickPriority': pickpriority,
-        'batchID': batchid,
-        'quantity': quantity,
-        'workingPool': workingpool,
-        'dwellTime': {'hours': dwellTime, 'minutes': convertTime(dwellTime)}
-      })
+          if (dwellTime) {
+            let parsedTime = dwellTime.split("\n")
+            let hrs = parsedTime[1]
+            let mins = parsedTime[0]
+            this.addShipment({
+              'shipmentID': sid,
+              'fnSku': fnSku,
+              'expectedShipDate': exsd,
+              'scannableID': scanid,
+              'outerScannableID': outerscanid,
+              'condition': cond,
+              'shipMethod': shipmeth,
+              'shipOption': shipopt,
+              'processPath': processpath,
+              'pickPriority': pickpriority,
+              'batchID': batchid,
+              'quantity': quantity,
+              'workingPool': workingpool,
+              'dwellTime': {'hours': hrs, 'minutes': mins}
+            })
+          }
     }
     this.showShipments()
   }
@@ -667,7 +661,7 @@ class Shipment {
 }
 
 window.shipmentManager = new ShipmentDB()
-shipmentManager.grabShipments(document)
+// shipmentManager.grabShipments(document)
 
 window.lineManager = new Line()
 
@@ -1459,36 +1453,38 @@ toteSearch.onkeyup = function () {
 let counter = 2
 window.pagnated = false
 
-function getPagnationPage (page) {
-  console.log('grabbing fromsss: ' + page)
+function getPagnationPage (page, manager) {
   $.get(page, function(data) {
     let div = document.createElement('div')
     div.innerHTML = data
-    console.log(div)
     nextPage = div.querySelector('.shipment-list .warn-pagination .pager-next-link').href;
-    shipmentManager.grabShipments(div)
+    manager.grabShipments(div)
+
     console.log('Grabbing Page: ' + counter)
-    document.querySelector('#btnArea #cart').innerText = `Loading Page: ${counter}`
+    document.querySelector('#pagnationLoading p').innerText = `Loading Page: ${counter}`
     counter += 1
     shipmentManager.showShipments()
     if (nextPage) {
-      console.log(nextPage)
-      getPagnationPage(nextPage)
+      getPagnationPage(nextPage, shipmentManager)
     } else {
       console.log('Pagnation done')
+      document.querySelector('#pagnationLoading p').innerText = `Complete!`
       cartDB.grabCarts()
       cartDB.setLocations()
+      toteDB.grabTotes()
       window.pagnated = true
     }
   })
 }
 let nextPage = document.querySelector('.shipment-list .warn-pagination .pager-next-link').href;
 if (nextPage) {
-  getPagnationPage(nextPage)
-  //  getPagnationPage(document.location.href  + '&pager.CUSTOMER_SHIPMENTS.pageSize=10000000')
+  getPagnationPage(nextPage, shipmentManager)
 } else {
   window.pagnated = true
+  getPagnationPage(document.location.href, shipmentManager)
+  // shipmentManager.grabShipments(document.body)
   cartDB.grabCarts()
+  cartDB.setLocations()
   cartDB.setLocations()
   toteDB.grabTotes()
 }
