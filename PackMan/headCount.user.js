@@ -1,4 +1,4 @@
-﻿// ==UserScript==
+// ==UserScript==
 // @name        AutomaticHeadCounts
 // @namespace   HeadCounts
 // @include     https://fc-pack-man-web-na.amazon.com/*
@@ -7,26 +7,16 @@
 // ==/UserScript==
 
 /*
- Modify the list below to hold stations which you don't desire a headcount for,
- i.e, problem solve packers
-*/
-const Excludes = [
-  'wsMultis502',
-  'wsMultis601'
-];
-
-/*
  Modify the object below to hold your desired process paths,
  provide the regex to match the process path name as a key: value pair
 */
-
 const PathList = {
   ppMultiLargeDual: 'wsMultis[6-9].*',
   ppMultiSmallDual: 'wsMultis[1-5].*',
   // only shows AAs signed into the processing app.
   ppMultiWraps:     'wsGiftWrap[1-9]{4}',
-  ppSingleLarge:    'wsSingles[1-4].*',
-  ppSinglePoly:     'wsSingles[5-8].*',
+  ppSingleLarge:    'wsSingles[1-5].*',
+  ppSinglePoly:     'wsSingles[6-8].*',
   // no unique identifier for shoes, count is added with single small
   ppSingleShoe:     'wsNULL',
   ppSingleSmall:    '^[0-9]{3}',
@@ -91,16 +81,10 @@ class WorkStationDB {
   regexSearch(prop, expression, arr=this.workstations) {
     let matches = [];
     let regex = new RegExp(expression);
-    let blacklist = (sid) => { return (Excludes.filter(station => station == sid)).length >= 1 ? true : false }
     arr.filter((station) => {
-      if(blacklist(station[prop])) {
-        console.log('Blacklisted Station: ' + station[prop]);
-      } else {
-        if(regex.test(station[prop])) {
-          matches.push(station);
-        }
+      if(regex.test(station[prop])) {
+        matches.push(station);
       }
-
     });
     return matches;
   }
