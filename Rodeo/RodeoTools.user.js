@@ -2,7 +2,7 @@
 // @name        RodeoTools
 // @namespace   RodeoTools
 // @include     https://rodeo-iad.amazon.com/BNA3/ItemList*
-// @version     2
+// @version     3
 // ==/UserScript==
 
 // https://rodeo-iad.amazon.com/resources/javascript/shipmentList.js
