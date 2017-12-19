@@ -2,7 +2,7 @@
 // @name        RodeoTools
 // @namespace   RodeoTools
 // @include     https://rodeo-iad.amazon.com/BNA3/ItemList*
-// @version     3
+// @version     2
 // ==/UserScript==
 
 // https://rodeo-iad.amazon.com/resources/javascript/shipmentList.js
@@ -46,7 +46,7 @@ let buttons = `<div id="bessTools">
 
   <div id="btnArea">
     <button id="cart" onclick="javascript:cartModal()">Carts</button>
-    <button id="tote" onclick="javascript:toteModalTest()">Totes</button>
+    <button id="tote" onclick="javascript:toteModal()">Totes</button>
   </div>
 
   <div id="searchArea">
@@ -226,6 +226,34 @@ class CartDB {
     })
   }
 
+  headerSort (property, direction = 'desc') {
+      let previousOrder = this.carts.slice()
+      let order
+      if (property === 'units') {
+        order = (direction === 'desc'
+        ? this.carts.sort((a, b) => { return b.units - a.units })
+        : this.carts.sort((b, a) => { return b.units - a.units }))
+      } else if (property === 'dwell') {
+        order = (direction === 'desc'
+        ? this.carts.sort((a, b) => { return parseInt(b.lowestDwell.minutes) - parseInt(a.lowestDwell.minutes) })
+        : this.carts.sort((b, a) => { return parseInt(b.lowestDwell.minutes) - parseInt(a.lowestDwell.minutes) }))
+      } else if (property === 'osid') {
+        order = (direction === 'desc'
+        ? this.carts.sort((a, b) => { return b.toteID < a.toteID })
+        : this.carts.sort((b, a) => { return b.toteID < a.toteID }))
+      }
+      if (Array.compare(previousOrder, order)) {
+        console.log('blahhh')
+        let newDirection = (direction === 'desc' ? 'asc' : 'desc')
+        this.sortBy(property, newDirection)
+      } else {
+        modal.clearContents()
+        this.carts = order
+         this.createTables()
+         return order
+      }
+    }
+
   addCart (cartObject) {
     this.carts.push(cartObject)
   }
@@ -309,6 +337,167 @@ class CartDB {
       console.log('Setting ' + cartIndent + ' : ' + cartLoc)
       if (parent.fetchCart(cartIndent).length > 0) parent.fetchCart(cartIndent).pop().location = cartLoc
     })
+  }
+
+  createTables () {
+      console.log('creating cart table')
+      cartDB.setLocations()
+      let groups = []
+      let carts = cartDB.carts
+
+      carts.forEach(function (cart) {
+        let area = cart.location
+        if (area) {
+          let identifier = area.substring(0, 2)
+          if (identifier === 'ws') {
+            area = 'Pack Station'
+          } else if (identifier === 'rs') {
+            area = 'Rebin Station'
+          } else {
+            area = 'Not Scanned Into'
+          }
+          let allCarts = groups.filter(function (group) {
+            return group.area === area
+          })
+          let found = (allCarts.length > 0)
+          if (found) {
+            allCarts[0].data.push({self: cart})
+          } else {
+            groups.push({
+              area: area,
+              data: [{self: cart}]
+            })
+          }
+        }
+      })
+      groups.sort(function (a, b) { return b.data.length - a.data.length })
+      let totalCarts = 0
+      groups.forEach(function (group) {
+        totalCarts += group.data.length
+      })
+
+      function displayGrid (name) {
+        let list = ['grid-pack-station', 'grid-rebin-station', 'grid-unscanned']
+
+        if (name === 'pack') {
+          list.map(id => {
+            id === 'grid-pack-station' ? document.getElementById(id).classList.remove('hidden') : document.getElementById(id).classList.add('hidden')
+          })
+        } else if (name === 'rebin') {
+          list.map(id => {
+            id === 'grid-rebin-station' ? document.getElementById(id).classList.remove('hidden') : document.getElementById(id).classList.add('hidden')
+          })
+        } else if (name === 'unscanned') {
+          list.map(id => {
+            id === 'grid-unscanned' ? document.getElementById(id).classList.remove('hidden') : document.getElementById(id).classList.add('hidden')
+          })
+        } else { // name == 'all'
+          list.map(id => {
+            document.getElementById(id).classList.remove('hidden')
+          })
+        }
+      }
+/*
+      function makeButton (val, action) {
+        let button = document.createElement('input')
+        button.setAttribute('class', 'bessButton')
+        button.type = 'button'
+        button.value = val
+        let { functionName, args } = action
+        button.addEventListener('click', function () {
+          functionName.apply(null, args)
+        })
+        document.querySelector('#informationModal .modal-header').appendChild(button)
+      }
+
+      makeButton('Packing', {functionName: displayGrid, args: ['pack']})
+      makeButton('Rebin', {functionName: displayGrid, args: ['rebin']})
+      makeButton('UnScanned', {functionName: displayGrid, args: ['unscanned']})
+      makeButton('All', {functionName: displayGrid, args: ['all']})
+*/
+      let row = document.createElement('div')
+      row.setAttribute('class', 'row')
+      document.querySelector('#informationModal .row').appendChild(row)
+
+      groups.forEach(function (group, index) {
+        let column = document.createElement('div')
+        column.setAttribute('class', 'grid col-sm-4')
+
+        if (group.area === 'Pack Station') {
+          column.setAttribute('id', 'grid-pack-station')
+        } else if (group.area === 'Rebin Station') {
+          column.setAttribute('id', 'grid-rebin-station')
+        } else { // group.area == 'Not Scanned Into'
+          column.setAttribute('id', 'grid-unscanned')
+        }
+
+        if (document.querySelector('#informationModal .row')) {
+          let contentArea = document.querySelector('#informationModal .row')
+          contentArea.appendChild(column)
+        }
+
+        let columnHeader = document.createElement('div')
+        columnHeader.setAttribute('class', 'grid-header')
+
+        let headerData = document.createTextNode(`${group.area} [${group.data.length} / ${totalCarts}]`)
+        columnHeader.appendChild(headerData)
+        column.appendChild(columnHeader)
+
+        let table = new Table()
+
+        // add custom filters here
+        /*
+        table.addHeader({
+          headerName: 'OSID',
+          attributes: [{
+            class: 'osid',
+            callback: {
+              func: () => { toteDB.sortBy('osid') },
+              params: []
+            }
+          }]
+        })
+        */
+        let cartHeaders = ['OSID', 'Location', 'Path', 'Dwell', 'Unit / Chute']
+        cartHeaders.map(header => table.addHeader({headerName: header, attributes: []}))
+        let attributes = {class: 'grid-content'}
+        table.addAttribute(attributes)
+
+        group.data.forEach(function (cartArray) {
+          let cart = cartArray.self
+          let osid = cart.cartID
+          let location = cart.location
+          let units = cart.units
+          let chutes = cart.chutes
+          let highDwell = cart.highestDwell().hours
+          let lowDwell = cart.lowestDwell().hours
+          let path = PathAcronyms[cart.shipments[0].processPath]
+
+          let osidCell = {text: osid, attributes: [{class: 'cart', link: true}]}
+          let locationCell = {text: location, attributes: [{class: 'location', link: true}]}
+          let unitCell = {text: `${units} / ${chutes}`, attributes: [{class: 'units'}]}
+          // let chuteCell = {text: chutes, attributes: [{class: 'chutes'}]}
+          // let highDwellCell = {text: highDwell, attributes: [{class: 'dwell'}]}
+          let pathCell = {text: path, attributes: [{class: 'path'}]}
+          let lowDwellCell = {text: lowDwell, attributes: [{class: 'dwell'}]}
+
+          if (location.substring(0, 2) === 'ws') {
+            let sameLocations = cartDB.sortBy('location', location)
+            if (sameLocations.length > 1) {
+              let titleString = sameLocations.map(function (l) {
+                return l.cartID
+              }).join(' ')
+              osidCell.attributes.push({duplicate: 'yes'}, {title: titleString})
+              locationCell.attributes.push({duplicate: 'yes'}, {title: titleString})
+            }
+          }
+
+          let finalCell = [osidCell, locationCell, pathCell, lowDwellCell, unitCell]
+          table.addCell(finalCell)
+        })
+        let tableHTML = table.createElement()
+        columnHeader.appendChild(tableHTML)
+      })
   }
 }
 
@@ -780,6 +969,7 @@ class Cart {
       let dwell = shipment.dwellTime.minutes
       if (parseInt(dwell) > parseInt(highestDwellTime.minutes)) highestDwellTime = shipment.dwellTime
     })
+    this.highestDwell = highestDwellTime
     return highestDwellTime
   }
 
@@ -789,6 +979,7 @@ class Cart {
       let dwell = shipment.dwellTime.minutes
       if (parseInt(dwell) < parseInt(lowestDwellTime.minutes)) lowestDwellTime = shipment.dwellTime
     })
+    this.lowestDwell = lowestDwellTime
     return lowestDwellTime
   }
 }
@@ -978,364 +1169,6 @@ class Table {
   }
 }
 
-window.cartModal = function () {
-  cartDB.setLocations()
-  let groups = []
-  let carts = cartDB.largestCarts()
-
-  carts.forEach(function (cart) {
-    let area = cart.location
-    if (area) {
-      let identifier = area.substring(0, 2)
-      if (identifier === 'ws') {
-        area = 'Pack Station'
-      } else if (identifier === 'rs') {
-        area = 'Rebin Station'
-      } else {
-        area = 'Not Scanned Into'
-      }
-      let allCarts = groups.filter(function (group) {
-        return group.area === area
-      })
-      let found = (allCarts.length > 0)
-      if (found) {
-        allCarts[0].data.push({self: cart})
-      } else {
-        groups.push({
-          area: area,
-          data: [{self: cart}]
-        })
-      }
-    }
-  })
-  groups.sort(function (a, b) { return b.data.length - a.data.length })
-  let totalCarts = 0
-  groups.forEach(function (group) {
-    totalCarts += group.data.length
-  })
-
-  let modal = document.createElement('div')
-  modal.setAttribute('id', 'myModal')
-  modal.setAttribute('class', 'modal')
-
-  let modalContent = document.createElement('div')
-  modalContent.setAttribute('class', 'modal-content')
-  modal.appendChild(modalContent)
-
-  let closeButton = document.createElement('span')
-  closeButton.innerHTML = '&times'
-  closeButton.setAttribute('id', 'modal-close')
-  modalContent.appendChild(closeButton)
-
-  let modalHead = document.createElement('div')
-  modalHead.setAttribute('id', 'modal-header')
-
-  function displayGrid (name) {
-    let list = ['grid-pack-station', 'grid-rebin-station', 'grid-unscanned']
-
-    if (name === 'pack') {
-      list.map(id => {
-        id === 'grid-pack-station' ? document.getElementById(id).classList.remove('hidden') : document.getElementById(id).classList.add('hidden')
-      })
-    } else if (name === 'rebin') {
-      list.map(id => {
-        id === 'grid-rebin-station' ? document.getElementById(id).classList.remove('hidden') : document.getElementById(id).classList.add('hidden')
-      })
-    } else if (name === 'unscanned') {
-      list.map(id => {
-        id === 'grid-unscanned' ? document.getElementById(id).classList.remove('hidden') : document.getElementById(id).classList.add('hidden')
-      })
-    } else { // name == 'all'
-      list.map(id => {
-        document.getElementById(id).classList.remove('hidden')
-      })
-    }
-  }
-
-  function makeButton (val, action) {
-    let button = document.createElement('input')
-    button.setAttribute('class', 'bessButton')
-    button.type = 'button'
-    button.value = val
-    let { functionName, args } = action
-    button.addEventListener('click', function () {
-      functionName.apply(null, args)
-    })
-    modalHead.appendChild(button)
-  }
-
-  makeButton('Packing', {functionName: displayGrid, args: ['pack']})
-  makeButton('Rebin', {functionName: displayGrid, args: ['rebin']})
-  makeButton('UnScanned', {functionName: displayGrid, args: ['unscanned']})
-  makeButton('All', {functionName: displayGrid, args: ['all']})
-
-  modalContent.appendChild(modalHead)
-
-  let row = document.createElement('div')
-  row.setAttribute('class', 'row')
-  modalContent.appendChild(row)
-
-  groups.forEach(function (group, index) {
-    let column = document.createElement('div')
-    column.setAttribute('class', 'grid col-sm-12')
-
-    if (group.area === 'Pack Station') {
-      column.setAttribute('id', 'grid-pack-station')
-    } else if (group.area === 'Rebin Station') {
-      column.setAttribute('id', 'grid-rebin-station')
-    } else { // group.area == 'Not Scanned Into'
-      column.setAttribute('id', 'grid-unscanned')
-    }
-    row.appendChild(column)
-
-    let columnHeader = document.createElement('div')
-    columnHeader.setAttribute('class', 'grid-header')
-
-    let headerData = document.createTextNode(`${group.area} [${group.data.length} / ${totalCarts}]`)
-    columnHeader.appendChild(headerData)
-    column.appendChild(columnHeader)
-
-    let table = new Table()
-
-    let cartHeaders = ['OSID', 'Location', 'Units', 'Chutes', 'Path', 'Highest Dwell', 'Lowest Dwell']
-    cartHeaders.map(header => table.addHeader({headerName: header, attributes: []}))
-    let attributes = {class: 'grid-content'}
-    table.addAttribute(attributes)
-
-    group.data.forEach(function (cartArray) {
-      let cart = cartArray.self
-      let osid = cart.cartID
-      let location = cart.location
-      let units = cart.units
-      let chutes = cart.chutes
-      let highDwell = cart.highestDwell().hours
-      let lowDwell = cart.lowestDwell().hours
-      let path = PathAcronyms[cart.shipments[0].processPath]
-
-      let osidCell = {text: osid, attributes: [{class: 'cart', link: true}]}
-      let locationCell = {text: location, attributes: [{class: 'location', link: true}]}
-      let unitCell = {text: units, attributes: [{class: 'units'}]}
-      let chuteCell = {text: chutes, attributes: [{class: 'chutes'}]}
-      let highDwellCell = {text: highDwell, attributes: [{class: 'dwell'}]}
-      let pathCell = {text: path, attributes: [{class: 'path'}]}
-      let lowDwellCell = {text: lowDwell, attributes: [{class: 'dwell'}]}
-
-      if (location.substring(0, 2) === 'ws') {
-        let sameLocations = cartDB.sortBy('location', location)
-        if (sameLocations.length > 1) {
-          let titleString = sameLocations.map(function (l) {
-            return l.cartID
-          }).join(' ')
-          osidCell.attributes.push({duplicate: 'yes'}, {title: titleString})
-          locationCell.attributes.push({duplicate: 'yes'}, {title: titleString})
-        }
-      }
-
-      let finalCell = [osidCell, locationCell, unitCell, chuteCell, pathCell, highDwellCell, lowDwellCell]
-      table.addCell(finalCell)
-    })
-    let tableHTML = table.createElement()
-    columnHeader.appendChild(tableHTML)
-  })
-
-  document.body.appendChild(modal)
-  let optMenu = document.getElementsByClassName('rodeo-navigation-container')[0]
-  optMenu.setAttribute('id', 'rodeo-navigation-container')
-  let divList = ['fcpn-header', 'rodeo-navigation-container', 'main-panel', 'fcpn-footer']
-  divList.map(div => {
-    let el = document.getElementById(div)
-    el.classList.add('hidden')
-  })
-
-  var _modal = document.getElementById('myModal')
-  var closeBtn = document.getElementById('modal-close')
-  closeBtn.onclick = function () {
-    divList.map(div => {
-      let el = document.getElementById(div)
-      if (div === 'rodeo-navigation-container') el.removeAttribute('id')
-      el.classList.remove('hidden')
-    })
-    _modal.parentNode.removeChild(modal)
-    _modal.style.display = 'none'
-  }
-
-  _modal.style.display = 'block'
-  window.onclick = function (event) {
-    if (event.target === _modal) {
-      divList.map(div => {
-        let el = document.getElementById(div)
-        if (div === 'rodeo-navigation-container') el.removeAttribute('id')
-        el.classList.remove('hidden')
-      })
-      _modal.parentNode.removeChild(modal)
-      _modal.style.display = 'none'
-    }
-  }
-}
-
-window.toteModal = function () {
-  toteDB.setLocations()
-  let groups = []
-  let totes = toteDB.totes // toteDB.largestTotes()
-  totes.forEach(function (tote) {
-    var line = tote.outerScannableID
-    if (lineManager.isActive(line)) {
-      let pattern = /(^ws[0-9]{3}|^[0-9]{3})/
-      if (line.includes('wsSingles') || pattern.test(line)) line = 'Pack Station'
-      let toteLine = groups.filter(function (group) {
-        return group.lineName === line
-      })
-      let lineFound = (toteLine.length > 0)
-      if (lineFound) {
-        // add things to the group here
-        toteLine[0].data.push({self: tote})
-      } else {
-        groups.push({
-          lineName: line,
-          data: [{self: tote}]
-        })
-      }
-    }
-  })
-
-  groups.sort(function (a, b) { return b.data.length - a.data.length })
-  let modal = document.createElement('div')
-  modal.setAttribute('id', 'myModal')
-  modal.setAttribute('class', 'modal')
-
-  let modalContent = document.createElement('div')
-  modalContent.setAttribute('class', 'modal-content')
-  modal.appendChild(modalContent)
-
-  let closeButton = document.createElement('span')
-  closeButton.innerHTML = '&times'
-  closeButton.setAttribute('id', 'modal-close')
-  modalContent.appendChild(closeButton)
-  // let rows = []
-  let row = document.createElement('div')
-  row.setAttribute('class', 'row')
-  modalContent.appendChild(row)
-
-  groups.forEach(function (group, index) {
-    let column = document.createElement('div')
-    column.setAttribute('class', 'grid col-sm-4')
-    row.appendChild(column)
-
-    let columnHeader = document.createElement('div')
-    columnHeader.setAttribute('class', 'grid-header')
-    let headerData = document.createTextNode(`${group.lineName} [${group.data.length}]`)
-    columnHeader.appendChild(headerData)
-    column.appendChild(columnHeader)
-
-    let table = new Table()
-
-    table.addHeader({
-      headerName: 'OSID',
-      attributes: [{
-        class: 'osid',
-        callback: {
-          func: () => { toteDB.sortBy('osid') },
-          params: []
-        }
-      }]
-    })
-
-    table.addHeader({
-      headerName: 'Units',
-      attributes: [{
-        class: 'units',
-        callback: {
-          func: () => { toteDB.sortBy('units') },
-          params: []
-        }
-      }]
-    })
-
-    table.addHeader({
-      headerName: 'Dwell',
-      attributes: [{
-        class: 'dwell',
-        callback: {
-          func: () => { toteDB.sortBy('dwell') },
-          params: []
-        }
-      }]
-    })
-    let toteHeaders = ['Path / Cond']
-    toteHeaders.map(header => table.addHeader({headerName: header, attributes: []}))
-
-    let attributes = {class: 'grid-content'}
-    table.addAttribute(attributes)
-    let locSet = false
-    group.data.forEach(function (toteArray) {
-      let tote = toteArray.self
-      let osid = tote.toteID
-      let units = tote.units
-      let dwell = tote.lowestDwellTime().hours
-      let path = PathAcronyms[tote.shipments[0].processPath]
-      let cond = tote.shipments[0].condition
-      let loc = tote.outerScannableID
-
-      let toteCell = {text: osid, attributes: [{class: 'tote', link: true, title: `${path} (${cond})`}]}
-      let locCell = {text: loc, attributes: [{class: 'location'}]}
-      let unitCell = {text: units, attributes: [{class: 'units'}]}
-      let dwellCell = {text: dwell, attributes: [{class: 'dwell'}]}
-      let pathCell = {text: `${path} / ${cond}`, attributes: [{class: 'path'}]}
-      let pattern = /(^ws[0-9]{3}|^[0-9]{3})/
-      var finalCell
-      if (loc.includes('wsSingles') || pattern.test(loc)) {
-        if (locSet === false) {
-          let locationHeader = {headerName: 'Location', attributes: []}
-          table.addHeader(locationHeader)
-        }
-        finalCell = [toteCell, unitCell, dwellCell, pathCell, locCell]
-        locSet = true
-      } else {
-        finalCell = [toteCell, unitCell, dwellCell, pathCell]
-      }
-      table.addCell(finalCell)
-    })
-    let tableHTML = table.createElement()
-    columnHeader.appendChild(tableHTML)
-  })
-
-  document.body.appendChild(modal)
-  let optMenu = document.getElementsByClassName('rodeo-navigation-container')[0]
-  optMenu.setAttribute('id', 'rodeo-navigation-container')
-  let divList = ['fcpn-header', 'rodeo-navigation-container', 'main-panel', 'fcpn-footer']
-  divList.map(div => {
-    let el = document.getElementById(div)
-    el.classList.add('hidden')
-  })
-
-  var _modal = document.getElementById('myModal')
-  var closeBtn = document.getElementById('modal-close')
-  closeBtn.onclick = function () {
-    divList.map(div => {
-      let el = document.getElementById(div)
-      if (div === 'rodeo-navigation-container') el.removeAttribute('id')
-      el.classList.remove('hidden')
-    })
-    _modal.parentNode.removeChild(modal)
-    _modal.style.display = 'none'
-  }
-
-  _modal.style.display = 'block'
-  window.onclick = function (event) {
-    if (event.target === _modal) {
-      _modal.style.display = 'none'
-      divList.map(div => {
-        let el = document.getElementById(div)
-        if (div === 'rodeo-navigation-container') el.removeAttribute('id')
-        el.classList.remove('hidden')
-      })
-      _modal.parentNode.removeChild(modal)
-      _modal.style.display = 'none'
-    }
-  }
-}
-
-
 class Modal {
   constructor (_id, _class) {
     this.id = _id
@@ -1397,10 +1230,16 @@ class Modal {
 
 window.modal = new Modal('informationModal', 'modal')
 
-window.toteModalTest = function () {
+window.toteModal = function () {
    if (toteDB.totes.length < 1) toteDB.grabTotes()
     modal.build()
     toteDB.createTables()
+}
+
+window.cartModal = function () {
+   if (toteDB.totes.length < 1) toteDB.grabTotes()
+    modal.build()
+    cartDB.createTables()
 }
 
 window.searchFor = function (identifier) {
