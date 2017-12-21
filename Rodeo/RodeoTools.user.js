@@ -226,7 +226,7 @@ class CartDB {
     })
   }
 
-  headerSort (property, direction = 'desc') {
+  headerSort (property, direction = 'desc', recur = false) {
       let previousOrder = this.carts.slice()
       let order
       if (property === 'units') {
@@ -252,9 +252,9 @@ class CartDB {
         ? this.carts.sort((a, b) => { return b.path < a.path })
         : this.carts.sort((b, a) => { return b.path < a.path }))
       }
-      if (Array.compare(previousOrder, order)) {
+      if (Array.compare(previousOrder, order) && recur === false) {
         let newDirection = (direction === 'desc' ? 'asc' : 'desc')
-        this.headerSort(property, newDirection)
+        this.headerSort(property, newDirection, !recur)
       } else {
         modal.clearContents()
         this.carts = order
@@ -774,7 +774,7 @@ class ToteDB {
     })
   }
 
-  headerSort (property, direction = 'desc') {
+  headerSort (property, direction = 'desc', recur = false) {
       let previousOrder = this.totes.slice()
       let order
       if (property === 'units') {
@@ -795,10 +795,9 @@ class ToteDB {
         : this.totes.sort((b, a) => { return b.processPath < a.processPath }))
       }
 
-      if (Array.compare(previousOrder, order)) {
-        console.log('blahhh')
+      if (Array.compare(previousOrder, order) && recur === false) {
         let newDirection = (direction === 'desc' ? 'asc' : 'desc')
-        this.headerSort(property, newDirection)
+        this.headerSort(property, newDirection, !recur)
       } else {
         modal.clearContents()
         this.totes = order
