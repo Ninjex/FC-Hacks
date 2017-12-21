@@ -239,13 +239,22 @@ class CartDB {
         : this.carts.sort((b, a) => { return parseInt(b.lowestDwell.minutes) - parseInt(a.lowestDwell.minutes) }))
       } else if (property === 'osid') {
         order = (direction === 'desc'
-        ? this.carts.sort((a, b) => { return b.toteID < a.toteID })
-        : this.carts.sort((b, a) => { return b.toteID < a.toteID }))
+        ? this.carts.sort((a, b) => { return b.cartID < a.cartID })
+        : this.carts.sort((b, a) => { return b.cartID < a.cartID }))
+      }
+      else if (property === 'location') {
+        order = (direction === 'desc'
+        ? this.carts.sort((a, b) => { return b.location < a.location })
+        : this.carts.sort((b, a) => { return b.location < a.location }))
+      }
+      else if (property === 'path') {
+        order = (direction === 'desc'
+        ? this.carts.sort((a, b) => { return b.path < a.path })
+        : this.carts.sort((b, a) => { return b.path < a.path }))
       }
       if (Array.compare(previousOrder, order)) {
-        console.log('blahhh')
         let newDirection = (direction === 'desc' ? 'asc' : 'desc')
-        this.sortBy(property, newDirection)
+        this.headerSort(property, newDirection)
       } else {
         modal.clearContents()
         this.carts = order
@@ -397,24 +406,7 @@ class CartDB {
           })
         }
       }
-/*
-      function makeButton (val, action) {
-        let button = document.createElement('input')
-        button.setAttribute('class', 'bessButton')
-        button.type = 'button'
-        button.value = val
-        let { functionName, args } = action
-        button.addEventListener('click', function () {
-          functionName.apply(null, args)
-        })
-        document.querySelector('#informationModal .modal-header').appendChild(button)
-      }
 
-      makeButton('Packing', {functionName: displayGrid, args: ['pack']})
-      makeButton('Rebin', {functionName: displayGrid, args: ['rebin']})
-      makeButton('UnScanned', {functionName: displayGrid, args: ['unscanned']})
-      makeButton('All', {functionName: displayGrid, args: ['all']})
-*/
       let row = document.createElement('div')
       row.setAttribute('class', 'row')
       document.querySelector('#informationModal .row').appendChild(row)
@@ -446,20 +438,64 @@ class CartDB {
         let table = new Table()
 
         // add custom filters here
-        /*
+
         table.addHeader({
           headerName: 'OSID',
           attributes: [{
             class: 'osid',
             callback: {
-              func: () => { toteDB.sortBy('osid') },
+              func: () => { cartDB.headerSort('osid') },
               params: []
             }
           }]
         })
-        */
-        let cartHeaders = ['OSID', 'Location', 'Path', 'Dwell', 'Unit / Chute']
-        cartHeaders.map(header => table.addHeader({headerName: header, attributes: []}))
+
+        table.addHeader({
+          headerName: 'Location',
+          attributes: [{
+            class: 'location',
+            callback: {
+              func: () => { cartDB.headerSort('location') },
+              params: []
+            }
+          }]
+        })
+
+        table.addHeader({
+          headerName: 'Unit / Chute',
+          attributes: [{
+            class: 'unit',
+            callback: {
+              func: () => { cartDB.headerSort('units') },
+              params: []
+            }
+          }]
+        })
+
+        table.addHeader({
+          headerName: 'Path',
+          attributes: [{
+            class: 'path',
+            callback: {
+              func: () => { cartDB.headerSort('path') },
+              params: []
+            }
+          }]
+        })
+
+        table.addHeader({
+          headerName: 'Dwell',
+          attributes: [{
+            class: 'dwell',
+            callback: {
+              func: () => { cartDB.headerSort('dwell') },
+              params: []
+            }
+          }]
+        })
+
+        // let cartHeaders = ['Path', 'Dwell']
+        // cartHeaders.map(header => table.addHeader({headerName: header, attributes: []}))
         let attributes = {class: 'grid-content'}
         table.addAttribute(attributes)
 
@@ -469,8 +505,8 @@ class CartDB {
           let location = cart.location
           let units = cart.units
           let chutes = cart.chutes
-          let highDwell = cart.highestDwell
-          let lowDwell = cart.lowestDwell
+          let highDwell = cart.highestDwell.minutes
+          let lowDwell = cart.lowestDwell.hours
           let path = PathAcronyms[cart.shipments[0].processPath]
 
           let osidCell = {text: osid, attributes: [{class: 'cart', link: true}]}
@@ -492,7 +528,7 @@ class CartDB {
             }
           }
 
-          let finalCell = [osidCell, locationCell, pathCell, lowDwellCell, unitCell]
+          let finalCell = [osidCell, locationCell, unitCell, pathCell, lowDwellCell]
           table.addCell(finalCell)
         })
         let tableHTML = table.createElement()
@@ -660,14 +696,13 @@ class ToteDB {
       column.appendChild(columnHeader)
 
       let table = new Table()
-      let toteHeaders = ['Path / Cond']
 
       table.addHeader({
         headerName: 'OSID',
         attributes: [{
           class: 'osid',
           callback: {
-            func: () => { toteDB.sortBy('osid') },
+            func: () => { toteDB.headerSort('osid') },
             params: []
           }
         }]
@@ -678,7 +713,7 @@ class ToteDB {
         attributes: [{
           class: 'units',
           callback: {
-            func: () => { toteDB.sortBy('units') },
+            func: () => { toteDB.headerSort('units') },
             params: []
           }
         }]
@@ -689,13 +724,22 @@ class ToteDB {
         attributes: [{
           class: 'dwell',
           callback: {
-            func: () => { toteDB.sortBy('dwell') },
+            func: () => { toteDB.headerSort('dwell') },
             params: []
           }
         }]
       })
 
-      toteHeaders.map(header => table.addHeader({headerName: header, attributes: []}))
+      table.addHeader({
+        headerName: 'Path / Cond',
+        attributes: [{
+          class: 'path',
+          callback: {
+            func: () => { toteDB.headerSort('path') },
+            params: []
+          }
+        }]
+      })
 
       let attributes = {class: 'grid-content'}
       table.addAttribute(attributes)
@@ -730,7 +774,7 @@ class ToteDB {
     })
   }
 
-  sortBy (property, direction = 'desc') {
+  headerSort (property, direction = 'desc') {
       let previousOrder = this.totes.slice()
       let order
       if (property === 'units') {
@@ -745,11 +789,16 @@ class ToteDB {
         order = (direction === 'desc'
         ? this.totes.sort((a, b) => { return b.toteID < a.toteID })
         : this.totes.sort((b, a) => { return b.toteID < a.toteID }))
+      } else if (property === 'path') {
+        order = (direction === 'desc'
+        ? this.totes.sort((a, b) => { return b.processPath < a.processPath })
+        : this.totes.sort((b, a) => { return b.processPath < a.processPath }))
       }
+
       if (Array.compare(previousOrder, order)) {
         console.log('blahhh')
         let newDirection = (direction === 'desc' ? 'asc' : 'desc')
-        this.sortBy(property, newDirection)
+        this.headerSort(property, newDirection)
       } else {
         modal.clearContents()
         this.totes = order
@@ -941,8 +990,9 @@ class Cart {
     this.shipments = shipments || []
     this.chutes = chutes || 0
     this.units = units || 0
-    this.highestDwell = this.highestDwell().hours
-    this.lowestDwell = this.lowestDwell().hours
+    this.highestDwell = this.highestDwell()
+    this.lowestDwell = this.lowestDwell()
+    this.path = this.shipments[0].processPath
   }
 
   addShipment (shipmentObject) {
