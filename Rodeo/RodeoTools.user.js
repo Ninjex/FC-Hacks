@@ -469,8 +469,8 @@ class CartDB {
           let location = cart.location
           let units = cart.units
           let chutes = cart.chutes
-          let highDwell = cart.highestDwell().hours
-          let lowDwell = cart.lowestDwell().hours
+          let highDwell = cart.highestDwell
+          let lowDwell = cart.lowestDwell
           let path = PathAcronyms[cart.shipments[0].processPath]
 
           let osidCell = {text: osid, attributes: [{class: 'cart', link: true}]}
@@ -941,6 +941,8 @@ class Cart {
     this.shipments = shipments || []
     this.chutes = chutes || 0
     this.units = units || 0
+    this.highestDwell = this.highestDwell().hours
+    this.lowestDwell = this.lowestDwell().hours
   }
 
   addShipment (shipmentObject) {
@@ -1237,7 +1239,7 @@ window.toteModal = function () {
 }
 
 window.cartModal = function () {
-   if (toteDB.totes.length < 1) toteDB.grabTotes()
+   if (cartDB.carts.length < 1) cartDB.grabCarts()
     modal.build()
     cartDB.createTables()
 }
