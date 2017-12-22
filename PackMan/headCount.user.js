@@ -2,7 +2,7 @@
 // @name        AutomaticHeadCounts
 // @namespace   HeadCounts
 // @include     https://fc-pack-man-web-na.amazon.com/*
-// @version     1
+// @version     2
 // @grant       none
 // ==/UserScript==
 
@@ -134,13 +134,49 @@ class WorkStationDB {
     tableDiv.innerHTML = table;
   }
 
+  findPackers () {
+    this.populateStations()
+    let rows = []
+    let packerList = prompt('Packer Logins (seperate with spaces)').split(' ').filter(i => i.length > 1)
+    console.log(packerList)
+    packerList.map((packer) => {
+      let search = this.workstations.filter((station) => {
+        return station.PackerID.trim() === packer.trim()
+      })
+      console.log('Search: ' + search)
+      if (search.length > 0) {
+        let row = `<tr>
+        <td style='border: solid 2px black; padding: 3px'>${packer}</td>
+        <td style='border: solid 2px black; padding: 3px'>${search[0].workstation.trim()}</td>
+        </tr>`
+        rows.push(row)
+      } else {
+        let row = `<tr>
+        <td style='border: solid 2px black; padding: 3px'>${packer}</td>
+        <td style='border: solid 2px black; padding: 3px'>&nbsp;</td>
+        </tr>`
+        rows.push(row)
+      }
+    })
+    let table = `<tr>
+        <th>Login</th>
+        <th>Location</th>
+      </tr>
+      ${rows.join('')}`;
+    let tableDiv = document.getElementById('headCount');
+    tableDiv.innerHTML = table;
+    // return results
+  }
+
 }
 
 window.stationDB = new WorkStationDB();
 
 let headCountDiv = `<div style='z-index: 100; position: absolute; top: 10%; left: 75%' id='headcount-container'></div>`;
 document.body.innerHTML += headCountDiv;
+document.querySelector('.container').style = 'width: 100%!important'
 document.querySelectorAll('.nav.pull-right')[0].innerHTML += '<li><a href="javascript:stationDB.headCount()">[Get Headcount]</a></li>';
 document.querySelectorAll('.nav.pull-right')[0].innerHTML += '<li><a href="javascript:stationDB.activeHeadCount()">[Active Headcount]</a></li>';
+document.querySelectorAll('.nav.pull-right')[0].innerHTML += '<li><a href="javascript:stationDB.findPackers()">[VTO]</a></li>';
 let myTable = `<table id="headCount" style="z-index:999; background-color: white; padding: 15px;"></table>`;
 document.getElementById('headcount-container').innerHTML += myTable;
