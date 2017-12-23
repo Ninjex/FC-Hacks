@@ -1,4 +1,4 @@
-// ==UserScript==
+﻿// ==UserScript==
 // @name        RodeoTools
 // @namespace   RodeoTools
 // @include     https://rodeo-iad.amazon.com/BNA3/ItemList*
@@ -1340,7 +1340,7 @@ toteSearch.onkeyup = function () {
   searchFor('tote')
 }
 
-let counter = 2
+let counter = 1
 window.pagnated = false
 
 function getPagnationPage (page, manager) {
@@ -1367,15 +1367,5 @@ function getPagnationPage (page, manager) {
     }
   })
 }
-let nextPage = document.querySelector('.shipment-list .warn-pagination .pager-next-link').href;
-if (nextPage) {
-  getPagnationPage(nextPage, shipmentManager)
-} else {
-  window.pagnated = true
-  getPagnationPage(document.location.href, shipmentManager)
-  // shipmentManager.grabShipments(document.body)
-  cartDB.grabCarts()
-  cartDB.setLocations()
-  cartDB.setLocations()
-  toteDB.grabTotes()
-}
+
+getPagnationPage(document.location.href, shipmentManager)
