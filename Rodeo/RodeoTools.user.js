@@ -1,4 +1,4 @@
-﻿// ==UserScript==
+// ==UserScript==
 // @name        RodeoTools
 // @namespace   RodeoTools
 // @include     https://rodeo-iad.amazon.com/BNA3/ItemList*
@@ -115,7 +115,7 @@ const PathAcronyms = {
   PPSinglePoly: 'SP',
   PPSingleSmall: 'SS',
   PPHOV: 'HOV',
-  PPSingleShoe: 'Shoe' // &#128095
+  PPSingleShoe: '👟'
 }
 
 const SinglePaths = {
@@ -413,7 +413,7 @@ class CartDB {
 
       groups.forEach(function (group, index) {
         let column = document.createElement('div')
-        column.setAttribute('class', 'grid col-sm-4')
+        column.setAttribute('class', `grid col-sm-${12 / groups.length}`)
 
         if (group.area === 'Pack Station') {
           column.setAttribute('id', 'grid-pack-station')
@@ -731,7 +731,18 @@ class ToteDB {
       })
 
       table.addHeader({
-        headerName: 'Path / Cond',
+        headerName: 'Path',
+        attributes: [{
+          class: 'path',
+          callback: {
+            func: () => { toteDB.headerSort('path') },
+            params: []
+          }
+        }]
+      })
+      
+      table.addHeader({
+        headerName: 'Cond',
         attributes: [{
           class: 'path',
           callback: {
@@ -754,7 +765,8 @@ class ToteDB {
         let locCell = {text: outerScannableID, attributes: [{class: 'location'}]}
         let unitCell = {text: units, attributes: [{class: 'units'}]}
         let dwellCell = {text: hours, attributes: [{class: 'dwell'}]}
-        let pathCell = {text: `${path} / ${condition}`, attributes: [{class: 'path'}]}
+        let pathCell = {text: path, attributes: [{class: 'path'}]}
+        let condCell = {text: condition, attributes: [{class: 'condition'}]}
         let pattern = /(^ws[0-9]{3}|^[0-9]{3})/
         var finalCell
         if (outerScannableID.includes('wsSingles') || pattern.test(outerScannableID)) {
@@ -762,10 +774,10 @@ class ToteDB {
             let locationHeader = {headerName: 'Location', attributes: []}
             table.addHeader(locationHeader)
           }
-          finalCell = [toteCell, unitCell, dwellCell, locCell, pathCell]
+          finalCell = [toteCell, unitCell, dwellCell, pathCell, condCell, locCell]
           locSet = true
         } else {
-          finalCell = [toteCell, unitCell, dwellCell, pathCell]
+          finalCell = [toteCell, unitCell, dwellCell, pathCell, condCell]
         }
         table.addCell(finalCell)
       })
@@ -1340,7 +1352,7 @@ toteSearch.onkeyup = function () {
   searchFor('tote')
 }
 
-let counter = 1
+let counter = 2
 window.pagnated = false
 
 function getPagnationPage (page, manager) {
